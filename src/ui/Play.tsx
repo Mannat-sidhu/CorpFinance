@@ -1,127 +1,127 @@
 // Session player, boss round and free practice.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ACTS, CHARACTERS, CONCEPTS, PRACTISABLE, PROBLEMS, findSession, isCalc, problemsFor } from '../content';
-import { eurSigned, pct } from '../engine/format';
+import { ACTS, CONCEPTS, PRACTISABLE, PROBLEMS, findSession, isCalc, problemsFor } from '../content';
+import { eur, eurSigned } from '../engine/format';
 import { STEPS } from '../engine/grading';
-import { modeFor, pickSpotCheck, stageOf } from '../engine/mastery';
+import { bossHelp, helpFor, pickSpotCheck, stageOf } from '../engine/mastery';
 import { mulberry32, newSeed, pickOne } from '../engine/rng';
-import type { CalcProblem, ConceptId, Problem, Stage, StoryBeat } from '../engine/types';
-import { ClassifyRunner } from './Classify';
-import { Ledger, LessonView, STAGE_LABEL } from './Overlays';
-import { ProblemRunner, type RunResult } from './ProblemRunner';
+import type { CalcProblem, ConceptId, Problem, Stage } from '../engine/types';
+import { Bubble, Scene } from './Chat';
+import { Ledger, LessonCard, STAGE_LABEL } from './Overlays';
+import { RoundRunner, type RoundResult } from './Rounds';
+import { Stars, starsFor } from './Stars';
 import { bumpStreak, useGame } from './store';
 
-// ---------------------------------------------------------------- shared pieces
+// ---------------------------------------------------------------- lessons
 
-export function Story({ beats, onDone, cta = 'Continue' }: { beats: StoryBeat[]; onDone: () => void; cta?: string }) {
-  return (
-    <section>
-      <div className="story">
-        {beats.map((b, i) => {
-          const c = CHARACTERS[b.who];
-          const narration = b.who === 'narrator';
-          return (
-            <div key={i} className={`beat ${narration ? 'narration' : 'speech'}`} style={{ animationDelay: `${i * 0.12}s` }}>
-              {!narration && (
-                <div className="who">
-                  {c.name} <em>· {c.role}</em>
-                </div>
-              )}
-              <div className="line">{b.text}</div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="step-actions">
-        <span className="spacer" />
-        <button type="button" className="btn" onClick={onDone} autoFocus>
-          {cta}
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function Lessons({ concepts, onDone }: { concepts: ConceptId[]; onDone: () => void }) {
+function Lessons({
+  concepts,
+  onDone,
+  onBack,
+  fromEnd,
+}: {
+  concepts: ConceptId[];
+  onDone: () => void;
+  onBack: () => void;
+  fromEnd?: boolean;
+}) {
   const { save, meet } = useGame();
-  const [i, setI] = useState(0);
-  const [reread, setReread] = useState(false);
+  const [i, setI] = useState(fromEnd ? concepts.length - 1 : 0);
+  const [phase, setPhase] = useState<'talk' | 'card'>(fromEnd ? 'card' : 'talk');
+  const [talkFromEnd, setTalkFromEnd] = useState(false);
   const id = concepts[i];
   const c = CONCEPTS[id];
   const stage = stageOf(save, id);
   const known = stage === 'practising' || stage === 'common';
-  const advance = () => {
+
+  const nextConcept = () => {
     meet(id);
-    setReread(false);
     if (i + 1 < concepts.length) {
       setI(i + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setPhase(known ? 'card' : 'talk');
+      setTalkFromEnd(false);
     } else onDone();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  if (known && !reread) {
+  const prevConcept = () => {
+    if (i > 0) {
+      setI(i - 1);
+      setPhase('card');
+    } else onBack();
+  };
+
+  const label = (
+    <div className="lesson-label">
+      <span className="eyebrow">Margaux explains</span>
+      {concepts.length > 1 && (
+        <span className="eyebrow">
+          {i + 1} of {concepts.length}
+        </span>
+      )}
+    </div>
+  );
+
+  if (phase === 'talk' && !known) {
     return (
-      <section className="panel">
-        <div className="eyebrow">Lesson · {STAGE_LABEL[stage]}</div>
-        <h2 className="step-title" style={{ marginTop: 4 }}>
-          {c.name}
-        </h2>
-        <p className="muted">You know this one: {c.summary}</p>
-        <div className="step-actions">
-          <button type="button" className="btn ghost" onClick={() => setReread(true)}>
-            Read it again
-          </button>
-          <span className="spacer" />
-          <button type="button" className="btn" onClick={advance}>
-            Skip
-          </button>
-        </div>
+      <section key={`${id}-talk`}>
+        {label}
+        <Scene
+          beats={c.lesson.plain.map((text) => ({ who: 'margaux' as const, text }))}
+          startAtEnd={talkFromEnd}
+          onBack={prevConcept}
+          onDone={() => setPhase('card')}
+          cta="Show me the card"
+        />
       </section>
     );
   }
   return (
-    <section>
-      {concepts.length > 1 && (
-        <div className="eyebrow" style={{ marginBottom: 8 }}>
-          Lesson {i + 1} of {concepts.length}
-        </div>
+    <section key={`${id}-card`}>
+      {label}
+      {known && (
+        <Bubble beat={{ who: 'margaux', text: `You know this one already. Here’s the card if you want a look.` }} />
       )}
-      <LessonView key={id} concept={c} />
-      <div className="step-actions">
-        <span className="spacer" />
-        <button type="button" className="btn" onClick={advance}>
-          {i + 1 < concepts.length ? 'Next lesson' : 'I’ve read it'}
+      <LessonCard concept={c} />
+      <div className="scene-controls">
+        <button
+          type="button"
+          className="btn ghost small"
+          onClick={() => {
+            if (known) prevConcept();
+            else {
+              setTalkFromEnd(true);
+              setPhase('talk');
+            }
+          }}
+        >
+          ← Back
+        </button>
+        <span />
+        <button type="button" className="btn" onClick={nextConcept}>
+          {i + 1 < concepts.length ? 'Next idea' : 'Got it, let’s play'} →
         </button>
       </div>
     </section>
   );
 }
+
+// ---------------------------------------------------------------- small cards
 
 function CfoCard({ problem, params, onDone }: { problem: CalcProblem; params: unknown; onDone: (decision: string) => void }) {
   const { openLesson } = useGame();
   const inst = useMemo(() => problem.build(params ?? problem.base), [problem, params]);
   return (
-    <section className="panel">
-      <div className="eyebrow">Common knowledge · handled by your CFO</div>
-      <div className="cfo" style={{ marginTop: 12 }}>
-        <div className="monogram" aria-hidden>
-          M
-        </div>
-        <div>
-          <div className="prose" style={{ fontSize: 17 }}>
-            {inst.prompt[0]}
-          </div>
-          <p className="outcome" style={{ paddingTop: 4 }}>
-            {inst.cfoLine}
-          </p>
-          <button type="button" className="link" onClick={() => openLesson(problem.concept)}>
-            Revise: {CONCEPTS[problem.concept].name}
-          </button>
-        </div>
-      </div>
-      <div className="step-actions">
-        <span className="spacer" />
+    <section>
+      <Bubble beat={{ who: 'margaux', mood: 'happy', text: `You know this one cold, so I handled it. ${inst.cfoLine}` }}>
+        <button type="button" className="link" style={{ fontSize: 13, marginTop: 6 }} onClick={() => openLesson(problem.concept)}>
+          Brush up on {CONCEPTS[problem.concept].name}
+        </button>
+      </Bubble>
+      <div className="scene-controls">
+        <span />
+        <span />
         <button type="button" className="btn" onClick={() => onDone(inst.decision.correct)} autoFocus>
-          Continue
+          Continue →
         </button>
       </div>
     </section>
@@ -130,19 +130,37 @@ function CfoCard({ problem, params, onDone }: { problem: CalcProblem; params: un
 
 function Promotion({ concept, to }: { concept: ConceptId; to: Stage }) {
   return (
-    <div className="feedback good" role="status">
-      <div className="verdict">
-        {CONCEPTS[concept].name} → {STAGE_LABEL[to]}
-      </div>
-      {to === 'practising' && 'Two clean answers on separate days. From now on Margaux does the routine arithmetic.'}
-      {to === 'common' && 'Common knowledge: Margaux will handle it, with the occasional spot check.'}
+    <div className="level-up" role="status">
+      <span className="level-up-tag">Level up</span>
+      <strong>{CONCEPTS[concept].name}</strong> is now <em>{STAGE_LABEL[to]}</em>.{' '}
+      {to === 'practising' && 'Less help from now on: no formulas shown, and one tip per problem.'}
+      {to === 'common' && 'Margaux handles it in the story. Pop quizzes come with no help at all.'}
+      {to === 'new' && ''}
     </div>
+  );
+}
+
+function DoneCard({ title, score, max, onNext }: { title: string; score: number; max: number; onNext: () => void }) {
+  return (
+    <section className="done-card">
+      <div className="done-tick">✓</div>
+      <div>
+        <div className="eyebrow">Already played</div>
+        <div className="done-title">{title}</div>
+        <div className="muted">
+          ✦ {score} / {max} points
+        </div>
+      </div>
+      <button type="button" className="btn" onClick={onNext} autoFocus>
+        Continue →
+      </button>
+    </section>
   );
 }
 
 const pickProblem = (concept: ConceptId, rng: () => number): Problem => pickOne(rng, problemsFor(concept));
 
-/** Picks and runs a quick check on one concept. Records the result. */
+/** A quick, one-minute pop quiz on something learnt earlier. */
 function SpotCheck({ exclude, onDone }: { exclude: ConceptId[]; onDone: (score: number, max: number) => void }) {
   const { save, recordWork } = useGame();
   const [seed] = useState(newSeed);
@@ -158,13 +176,13 @@ function SpotCheck({ exclude, onDone }: { exclude: ConceptId[]; onDone: (score: 
 
   if (!target || !setup) {
     return (
-      <section className="panel">
-        <div className="eyebrow">Spot check</div>
-        <p style={{ marginTop: 8 }}>Nothing is due for a spot check today.</p>
-        <div className="step-actions">
-          <span className="spacer" />
+      <section>
+        <Bubble beat={{ who: 'margaux', mood: 'happy', text: 'No pop quiz today. Enjoy it while it lasts.' }} />
+        <div className="scene-controls">
+          <span />
+          <span />
           <button type="button" className="btn" onClick={() => onDone(0, 0)} autoFocus>
-            Continue
+            Finish →
           </button>
         </div>
       </section>
@@ -172,16 +190,22 @@ function SpotCheck({ exclude, onDone }: { exclude: ConceptId[]; onDone: (score: 
   }
   if (done) {
     return (
-      <section className="panel">
-        <div className="eyebrow">Spot check · {CONCEPTS[target].name}</div>
-        <p style={{ marginTop: 8 }}>
-          {done.score} / {done.max}.
-        </p>
+      <section>
+        <Bubble
+          beat={{
+            who: 'margaux',
+            mood: done.score === done.max ? 'happy' : 'worried',
+            text: done.score === done.max ? 'Still sharp. Good.' : 'Bit rusty. We’ll come back to that one.',
+          }}
+        />
         {promo && <Promotion concept={target} to={promo} />}
-        <div className="step-actions">
-          <span className="spacer" />
+        <div className="scene-controls">
+          <span />
+          <span className="muted">
+            ✦ {done.score} / {done.max}
+          </span>
           <button type="button" className="btn" onClick={() => onDone(done.score, done.max)} autoFocus>
-            Continue
+            Finish →
           </button>
         </div>
       </section>
@@ -189,37 +213,21 @@ function SpotCheck({ exclude, onDone }: { exclude: ConceptId[]; onDone: (score: 
   }
   const stage = stageOf(save, target);
   const intro = (
-    <p className="muted" style={{ fontSize: 14 }}>
-      Spot check on <strong>{CONCEPTS[target].name}</strong> ({STAGE_LABEL[stage].toLowerCase()}). About a minute. New numbers.
-    </p>
+    <div className="pop-quiz">
+      <span className="pop-tag">Pop quiz</span> {CONCEPTS[target].name}, with new numbers. About a minute.
+    </div>
   );
-  if (setup.p.kind === 'classify') {
-    return (
-      <>
-        {intro}
-        <ClassifyRunner
-          problem={setup.p}
-          seed={seed}
-          count={3}
-          onDone={(r) => {
-            const clean = r.clean[target] ?? r.score === r.max;
-            const to = recordWork(target, clean, true);
-            if (to && to !== stage) setPromo(to);
-            setDone({ score: r.score, max: r.max });
-          }}
-        />
-      </>
-    );
-  }
   return (
-    <ProblemRunner
+    <RoundRunner
       problem={setup.p}
       params={setup.params}
-      mode="practising"
+      mode={stage === 'common' ? 'unguided' : 'prompted'}
       seed={seed}
+      count={3}
       intro={intro}
       onDone={(r) => {
-        const to = recordWork(target, r.clean, true);
+        const clean = r.clean[target] ?? r.score === r.max;
+        const to = recordWork(target, clean, true);
         if (to && to !== stage) setPromo(to);
         setDone({ score: r.score, max: r.max });
       }}
@@ -230,24 +238,26 @@ function SpotCheck({ exclude, onDone }: { exclude: ConceptId[]; onDone: (score: 
 // ---------------------------------------------------------------- session
 
 export function SessionPlayer({ sessionId }: { sessionId: string }) {
-  const { save, setSave, go, applyOutcome, recordWork } = useGame();
+  const { save, setSave, go, back, applyOutcome, recordWork } = useGame();
   const found = findSession(sessionId)!;
   const { session, act, index } = found;
   const replay = !!save.sessions[sessionId];
   const resume = save.resume?.sessionId === sessionId ? save.resume : null;
   const [part, setPart] = useState(resume?.part ?? 0);
-  const [score, setScore] = useState(resume?.score ?? 0);
-  const [max, setMax] = useState(resume?.max ?? 0);
+  const [done, setDone] = useState<Record<number, { score: number; max: number }>>(resume?.done ?? {});
+  const [cameBack, setCameBack] = useState(false);
   const [startValue] = useState(resume?.startValue ?? save.value);
   const [seed] = useState(newSeed);
   const [promos, setPromos] = useState<{ concept: ConceptId; to: Stage }[]>([]);
   const taught = useMemo(() => session.parts.flatMap((p) => (p.kind === 'lesson' ? p.concepts : [])), [session]);
   const total = session.parts.length;
   const finished = part >= total;
+  const score = Object.values(done).reduce((s, d) => s + d.score, 0);
+  const max = Object.values(done).reduce((s, d) => s + d.max, 0);
 
   useEffect(() => {
-    if (!finished) setSave((s) => ({ ...s, resume: { sessionId, part, score, max, startValue } }));
-  }, [part, score, max, finished, sessionId, startValue, setSave]);
+    if (!finished) setSave((s) => ({ ...s, resume: { sessionId, part, score, max, startValue, done } }));
+  }, [part, done, finished, sessionId, startValue, setSave, score, max]);
 
   const recorded = useRef(false);
   useEffect(() => {
@@ -263,19 +273,32 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
     );
   }, [finished, score, max, sessionId, setSave]);
 
-  const advance = (dScore = 0, dMax = 0) => {
-    setScore((s) => s + dScore);
-    setMax((m) => m + dMax);
+  const forward = (result?: { score: number; max: number }) => {
+    if (result) setDone((d) => ({ ...d, [part]: result }));
+    setCameBack(false);
     setPart((p) => p + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const backward = () => {
+    if (part === 0) return back();
+    setCameBack(true);
+    setPart((p) => p - 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const notePromo = (concept: ConceptId, to: Stage | null) => to && setPromos((p) => [...p, { concept, to }]);
 
   const head = (
     <header className="session-head">
-      <div className="eyebrow">
-        Act {act.numeral} · Session {index + 1} of {act.sessions.length}
-        {replay && ' · replay: the house’s value is not affected'}
+      <div className="spread">
+        <div className="eyebrow">
+          Chapter {act.numeral} · Episode {index + 1}
+          {replay && ' · replay, just for practice'}
+        </div>
+        {!finished && (
+          <span className="muted num-tab" style={{ fontSize: 13 }}>
+            ✦ {score} points
+          </span>
+        )}
       </div>
       <h1>{session.title}</h1>
       <div className="progress-dots" aria-hidden>
@@ -289,15 +312,19 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
   if (finished) {
     const nextSession = act.sessions[index + 1];
     const delta = save.value - startValue;
+    const stars = starsFor(score, max);
     return (
       <div className="play">
         <div className="play-main">
           {head}
-          <section className="panel">
-            <div className="eyebrow">Session complete</div>
-            <div className="spread" style={{ marginTop: 14 }}>
+          <section className="finale">
+            <div className="eyebrow">Episode cleared</div>
+            <div className="finale-stars">
+              <Stars n={stars} />
+            </div>
+            <div className="finale-grid">
               <div>
-                <div className="eyebrow">Marks</div>
+                <div className="eyebrow">Points</div>
                 <div className="big-number">
                   {score}
                   <span className="muted" style={{ fontSize: 24 }}>
@@ -307,7 +334,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
                 </div>
               </div>
               <div>
-                <div className="eyebrow">House value this session</div>
+                <div className="eyebrow">House value</div>
                 <div className={`big-number delta ${delta >= 0 ? 'up' : 'down'}`} style={{ fontWeight: 400 }}>
                   {eurSigned(delta)}
                 </div>
@@ -316,22 +343,28 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
             {promos.map((p, i) => (
               <Promotion key={i} concept={p.concept} to={p.to} />
             ))}
-            <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>
-              Concepts move up a stage after two clean answers in separate sittings (different days, or six hours apart). Come back tomorrow and practise
-              from the ledger.
-            </p>
-            <div className="step-actions">
+            <Bubble
+              beat={{
+                who: 'margaux',
+                mood: stars === 3 ? 'happy' : 'neutral',
+                text:
+                  stars === 3
+                    ? 'Not bad at all. Come back tomorrow and do a couple from the ledger. Ideas level up when you get them right on two different days.'
+                    : 'Decent. Practise the shaky ones from the ledger tomorrow. Ideas level up when you get them right on two different days.',
+              }}
+            />
+            <div className="scene-controls">
               <button type="button" className="btn ghost" onClick={() => go({ name: 'map' })}>
                 Back to the map
               </button>
-              <span className="spacer" />
+              <span />
               {nextSession ? (
                 <button type="button" className="btn" onClick={() => go({ name: 'play', sessionId: nextSession.id })}>
-                  Next: {nextSession.title}
+                  Next: {nextSession.title} →
                 </button>
               ) : act.boss ? (
                 <button type="button" className="btn" onClick={() => go({ name: 'boss', act: act.number })}>
-                  Boss round: {act.boss.title}
+                  Boss level: {act.boss.title} →
                 </button>
               ) : null}
             </div>
@@ -346,56 +379,47 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
 
   const p = session.parts[part];
   let body: JSX.Element;
-  if (p.kind === 'story') body = <Story key={part} beats={p.beats} onDone={() => advance()} />;
-  else if (p.kind === 'lesson') body = <Lessons key={part} concepts={p.concepts} onDone={() => advance()} />;
-  else if (p.kind === 'spotcheck') body = <SpotCheck key={part} exclude={taught} onDone={(s, m) => advance(s, m)} />;
+  if (p.kind === 'story')
+    body = <Scene key={part} beats={p.beats} scene={p.scene} startAtEnd={cameBack} onBack={backward} onDone={() => forward()} />;
+  else if (p.kind === 'lesson')
+    body = <Lessons key={part} concepts={p.concepts} fromEnd={cameBack} onBack={backward} onDone={() => forward()} />;
+  else if (done[part]) {
+    const title = p.kind === 'problem' ? PROBLEMS[p.problem].title : 'Pop quiz';
+    body = <DoneCard key={part} title={title} score={done[part].score} max={done[part].max} onNext={() => forward()} />;
+  } else if (p.kind === 'spotcheck') body = <SpotCheck key={part} exclude={taught} onDone={(s, m) => forward({ score: s, max: m })} />;
   else {
     const problem = PROBLEMS[p.problem];
-    if (problem.kind === 'classify') {
+    const stage = stageOf(save, problem.concept);
+    if (problem.kind === 'calc' && stage === 'common') {
       body = (
-        <ClassifyRunner
+        <CfoCard
           key={part}
           problem={problem}
-          seed={seed + part}
-          onDone={(r) => {
-            for (const [c, clean] of Object.entries(r.clean)) notePromo(c, recordWork(c, clean, false));
-            advance(r.score, r.max);
+          params={p.params}
+          onDone={(d) => {
+            const o = problem.build(p.params ?? problem.base).outcomes[d];
+            if (!replay && o) applyOutcome(o, act.number);
+            forward({ score: 0, max: 0 });
           }}
         />
       );
     } else {
-      const mode = modeFor(stageOf(save, problem.concept));
-      if (mode === 'auto') {
-        body = (
-          <CfoCard
-            key={part}
-            problem={problem}
-            params={p.params}
-            onDone={(d) => {
-              const o = problem.build(p.params ?? problem.base).outcomes[d];
-              if (!replay && o) applyOutcome(o);
-              advance();
-            }}
-          />
-        );
-      } else {
-        body = (
-          <ProblemRunner
-            key={part}
-            problem={problem}
-            params={p.params}
-            mode={mode}
-            seed={seed + part}
-            outcomeNote={!replay}
-            onDone={(r: RunResult) => {
-              const o = r.instance.outcomes[r.decision];
-              if (!replay && o) applyOutcome(o);
-              notePromo(problem.concept, recordWork(problem.concept, r.clean, false));
-              advance(r.score, r.max);
-            }}
-          />
-        );
-      }
+      body = (
+        <RoundRunner
+          key={part}
+          problem={problem}
+          params={p.params}
+          mode={helpFor(stage)}
+          seed={seed + part}
+          outcomeNote={!replay}
+          onDone={(r: RoundResult) => {
+            const o = r.calc?.instance.outcomes[r.calc.decision] ?? r.outcome;
+            if (!replay && o) applyOutcome(o, act.number);
+            for (const [c, clean] of Object.entries(r.clean)) notePromo(c, recordWork(c, clean, false));
+            forward({ score: r.score, max: r.max });
+          }}
+        />
+      );
     }
   }
 
@@ -403,6 +427,11 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
     <div className="play">
       <div className="play-main">
         {head}
+        {(p.kind === 'problem' || p.kind === 'spotcheck') && !done[part] && (
+          <button type="button" className="link back-link" onClick={backward}>
+            ← Back
+          </button>
+        )}
         {body}
       </div>
       <aside className="play-side" aria-label="Ledger">
@@ -415,12 +444,12 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
 // ---------------------------------------------------------------- boss round
 
 export function BossPlayer({ actNumber }: { actNumber: number }) {
-  const { setSave, go, recordWork } = useGame();
+  const { save, setSave, go, back, recordWork } = useGame();
   const act = ACTS[actNumber - 1];
   const boss = act.boss!;
   const [i, setI] = useState(-1);
   const [seed] = useState(newSeed);
-  const [runs, setRuns] = useState<{ title: string; r: RunResult }[]>([]);
+  const [runs, setRuns] = useState<{ title: string; r: RoundResult }[]>([]);
   const done = i >= boss.problems.length;
 
   useEffect(() => {
@@ -432,7 +461,7 @@ export function BossPlayer({ actNumber }: { actNumber: number }) {
 
   const head = (
     <header className="session-head">
-      <div className="eyebrow">Act {act.numeral} · Boss round</div>
+      <div className="eyebrow">Chapter {act.numeral} · Boss level</div>
       <h1>{boss.title}</h1>
       <div className="progress-dots" aria-hidden>
         {boss.problems.map((_, k) => (
@@ -444,9 +473,9 @@ export function BossPlayer({ actNumber }: { actNumber: number }) {
 
   if (i < 0)
     return (
-      <div className="play-main" style={{ maxWidth: 820 }}>
+      <div className="play-main narrow">
         {head}
-        <Story beats={boss.intro} onDone={() => setI(0)} cta="Begin" />
+        <Scene beats={boss.intro} onBack={back} onDone={() => setI(0)} cta="Bring it on" />
       </div>
     );
 
@@ -454,15 +483,15 @@ export function BossPlayer({ actNumber }: { actNumber: number }) {
     const score = runs.reduce((s, x) => s + x.r.score, 0);
     const max = runs.reduce((s, x) => s + x.r.max, 0);
     return (
-      <div className="play-main" style={{ maxWidth: 820 }}>
+      <div className="play-main narrow">
         {head}
-        <section className="panel">
-          <div className="eyebrow">Marks by step</div>
+        <section className="finale">
+          <div className="eyebrow">Boss defeated</div>
+          <div className="finale-stars">
+            <Stars n={starsFor(score, max)} />
+          </div>
           <div className="big-number" style={{ margin: '8px 0 16px' }}>
             {score} <span className="muted" style={{ fontSize: 24 }}>/ {max}</span>
-            <span className="muted" style={{ fontSize: 18, marginLeft: 12 }}>
-              {pct(Math.round((score / max) * 100))}
-            </span>
           </div>
           <table className="marks-table">
             <tbody>
@@ -479,22 +508,29 @@ export function BossPlayer({ actNumber }: { actNumber: number }) {
                   <td>
                     ({String.fromCharCode(97 + k)}) {x.title}
                   </td>
-                  {STEPS.map((s) => (
-                    <td key={s} style={{ textAlign: 'right' }}>
-                      {x.r.results[s]?.score ?? '–'}
+                  {x.r.calc ? (
+                    STEPS.map((s) => (
+                      <td key={s} style={{ textAlign: 'right' }}>
+                        {x.r.calc!.results[s]?.score ?? '–'}
+                      </td>
+                    ))
+                  ) : (
+                    <td colSpan={STEPS.length} style={{ textAlign: 'right' }}>
+                      {x.r.score} / {x.r.max}
                     </td>
-                  ))}
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
         <section className="paper-card">
-          <div className="eyebrow">Now on paper</div>
-          <h2 style={{ fontSize: 22, marginTop: 4 }}>The assigned problems for this act</h2>
-          <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>
-            These are the highest-priority exam material: most of the mock exam came almost word for word from them. Write out every step, as you did here.
-          </p>
+          <Bubble
+            beat={{
+              who: 'margaux',
+              text: 'Homework. Do these from your problem set on paper, every step written out, just like you did here. They’re the real test.',
+            }}
+          />
           <ul>
             {boss.paper.map((p) => (
               <li key={p.ref}>
@@ -504,30 +540,157 @@ export function BossPlayer({ actNumber }: { actNumber: number }) {
             ))}
           </ul>
         </section>
-        <div className="step-actions">
-          <span className="spacer" />
-          <button type="button" className="btn" onClick={() => go({ name: 'map' })}>
+        <div className="scene-controls">
+          <button type="button" className="btn ghost" onClick={() => go({ name: 'map' })}>
             Back to the map
           </button>
+          <span />
+          {!save.yearsClosed.includes(actNumber) && (actNumber === 1 || save.yearsClosed.includes(actNumber - 1)) ? (
+            <button type="button" className="btn" onClick={() => go({ name: 'yearend', act: actNumber })}>
+              Close year {actNumber} →
+            </button>
+          ) : (
+            <span />
+          )}
         </div>
       </div>
     );
   }
 
   const spec = boss.problems[i];
-  const problem = PROBLEMS[spec.problem] as CalcProblem;
+  const problem = PROBLEMS[spec.problem];
   return (
-    <div className="play-main" style={{ maxWidth: 820 }}>
+    <div className="play-main narrow">
       {head}
-      <ProblemRunner
+      <RoundRunner
         key={i}
         problem={problem}
         params={spec.params}
-        mode="full"
+        mode={bossHelp(act.number)}
         seed={seed + i}
-        intro={<div className="eyebrow">Part ({String.fromCharCode(97 + i)})</div>}
+        intro={<div className="pop-quiz">Part ({String.fromCharCode(97 + i)}) of {boss.problems.length}</div>}
         onDone={(r) => {
-          recordWork(problem.concept, r.clean, false);
+          for (const [c, clean] of Object.entries(r.clean)) recordWork(c, clean, false);
+          setRuns((x) => [...x, { title: problem.title, r }]);
+          setI(i + 1);
+          window.scrollTo({ top: 0 });
+        }}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- exam room
+
+/** Value added to the house the first time an exam room is finished, at full marks. */
+const EXAM_BONUS_PER_QUESTION = 2000;
+
+export function ExamPlayer({ actNumber }: { actNumber: number }) {
+  const { save, setSave, go, back, recordWork, applyOutcome } = useGame();
+  const act = ACTS[actNumber - 1];
+  const exam = act.exam!;
+  const first = !save.exams[actNumber];
+  const [i, setI] = useState(-1);
+  const [seed] = useState(newSeed);
+  const [runs, setRuns] = useState<{ title: string; r: RoundResult }[]>([]);
+  const done = i >= exam.problems.length;
+  const score = runs.reduce((s, x) => s + x.r.score, 0);
+  const max = runs.reduce((s, x) => s + x.r.max, 0);
+  const bonus = Math.round((EXAM_BONUS_PER_QUESTION * exam.problems.length * score) / Math.max(1, max) / 100) * 100;
+
+  useEffect(() => {
+    if (!done) return;
+    if (first && bonus > 0) applyOutcome({ valueDelta: bonus, news: `Chapter ${act.numeral} exam room: ${score} / ${max}.` });
+    setSave((s) => bumpStreak({ ...s, exams: { ...s.exams, [actNumber]: { at: Date.now(), score, max } } }));
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const head = (
+    <header className="session-head">
+      <div className="eyebrow">Chapter {act.numeral} · Exam room</div>
+      <h1>{act.title}: on paper</h1>
+      <div className="progress-dots" aria-hidden>
+        {exam.problems.map((_, k) => (
+          <span key={k} className={k < i ? 'done' : k === i ? 'here' : ''} />
+        ))}
+      </div>
+    </header>
+  );
+
+  if (i < 0)
+    return (
+      <div className="play-main narrow">
+        {head}
+        <section className="panel">
+          <p style={{ marginTop: 0 }}>{exam.intro}</p>
+          <p className="muted">
+            {exam.problems.length} questions. Each one is marked like an exam script: timeline, method, inputs, answer and recommendation.
+            {first && ` Finishing it the first time adds up to ${eur(EXAM_BONUS_PER_QUESTION * exam.problems.length)} to the house’s value, in proportion to your marks.`}
+          </p>
+          <div className="scene-controls">
+            <button type="button" className="btn ghost" onClick={back}>
+              ← Back
+            </button>
+            <span />
+            <button type="button" className="btn" onClick={() => setI(0)} autoFocus>
+              Turn over the paper
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+
+  if (done)
+    return (
+      <div className="play-main narrow">
+        {head}
+        <section className="finale">
+          <div className="eyebrow">Paper marked</div>
+          <div className="finale-stars">
+            <Stars n={starsFor(score, max)} />
+          </div>
+          <div className="big-number" style={{ margin: '8px 0 16px' }}>
+            {score} <span className="muted" style={{ fontSize: 24 }}>/ {max}</span>
+          </div>
+          <table className="marks-table">
+            <tbody>
+              {runs.map((x, k) => (
+                <tr key={k}>
+                  <td>
+                    Q{k + 1}. {x.title}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {x.r.score} / {x.r.max}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {first && bonus > 0 && <p className="outcome">House value {eurSigned(bonus)} for a well-argued paper.</p>}
+          <div className="scene-controls">
+            <span />
+            <span />
+            <button type="button" className="btn" onClick={() => go({ name: 'map' })}>
+              Back to the map
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+
+  const spec = exam.problems[i];
+  const problem = PROBLEMS[spec.problem];
+  return (
+    <div className="play-main narrow">
+      {head}
+      <RoundRunner
+        key={i}
+        problem={problem}
+        params={spec.params}
+        mode="unguided"
+        seed={seed + i}
+        intro={<div className="pop-quiz">Question {i + 1} of {exam.problems.length}</div>}
+        onDone={(r) => {
+          for (const [c, clean] of Object.entries(r.clean)) recordWork(c, clean, false);
           setRuns((x) => [...x, { title: problem.title, r }]);
           setI(i + 1);
           window.scrollTo({ top: 0 });
@@ -550,7 +713,7 @@ export function PracticePlayer({ concept }: { concept: ConceptId }) {
     const p = pickProblem(concept, rng);
     return { p, params: isCalc(p) ? p.vary(rng) : null };
   }, [concept, seed]);
-  const mode = stage === 'practising' || stage === 'common' ? 'practising' : 'full';
+  const mode = helpFor(stage);
   const spot = stage === 'common';
   const c = CONCEPTS[concept];
 
@@ -562,54 +725,45 @@ export function PracticePlayer({ concept }: { concept: ConceptId }) {
   };
 
   return (
-    <div className="play-main" style={{ maxWidth: 820 }}>
+    <div className="play-main narrow">
       <header className="session-head">
         <div className="eyebrow">Practice · {STAGE_LABEL[stage]}</div>
         <h1>{c.name}</h1>
         <p className="muted" style={{ marginTop: 8 }}>
-          Fresh numbers each time. Clean answers here count towards moving up a stage.{' '}
+          New numbers every round.{' '}
           <button type="button" className="link" onClick={() => openLesson(concept)}>
-            Revise the lesson
+            Open the cheat card
           </button>
         </p>
       </header>
       {result ? (
-        <section className="panel">
-          <div className="eyebrow">Result</div>
+        <section className="finale">
+          <div className="finale-stars">
+            <Stars n={starsFor(result.score, result.max)} />
+          </div>
           <div className="big-number" style={{ margin: '8px 0' }}>
             {result.score} <span className="muted" style={{ fontSize: 24 }}>/ {result.max}</span>
           </div>
           {result.promo && <Promotion concept={concept} to={result.promo} />}
-          <div className="step-actions">
+          <div className="scene-controls">
             <button type="button" className="btn ghost" onClick={() => go({ name: 'map' })}>
               Back to the map
             </button>
-            <span className="spacer" />
+            <span />
             <button type="button" className="btn" onClick={again} autoFocus>
-              Another one
+              Another round →
             </button>
           </div>
         </section>
-      ) : setup.p.kind === 'classify' ? (
-        <ClassifyRunner
-          key={round}
-          problem={setup.p}
-          seed={seed}
-          count={setup.p.show}
-          onDone={(r) => {
-            const promo = recordWork(concept, r.clean[concept] ?? r.score === r.max, spot);
-            setResult({ score: r.score, max: r.max, promo });
-          }}
-        />
       ) : (
-        <ProblemRunner
+        <RoundRunner
           key={round}
           problem={setup.p}
           params={setup.params}
           mode={mode}
           seed={seed}
           onDone={(r) => {
-            const promo = recordWork(concept, r.clean, spot);
+            const promo = recordWork(concept, r.clean[concept] ?? r.score === r.max, spot);
             setResult({ score: r.score, max: r.max, promo });
           }}
         />
@@ -617,4 +771,3 @@ export function PracticePlayer({ concept }: { concept: ConceptId }) {
     </div>
   );
 }
-

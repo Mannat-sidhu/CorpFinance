@@ -20,8 +20,9 @@ export const assetsClassify: ClassifyProblem = {
   kind: 'classify',
   id: 'assets-classify',
   title: 'Taking stock',
+  host: 'margaux',
   concept: 'real-financial',
-  prompt: ['Margaux is drawing up the house’s first balance sheet. Sort each item: is it a real asset or a financial asset?'],
+  prompt: ['I’m drawing up our first balance sheet. Help me sort it: real asset or financial asset?'],
   categories: [
     { id: 'real', label: 'Real asset' },
     { id: 'financial', label: 'Financial asset' },
@@ -43,8 +44,9 @@ export const decisionsClassify: ClassifyProblem = {
   kind: 'classify',
   id: 'decisions-classify',
   title: 'Two kinds of decision',
+  host: 'margaux',
   concept: 'invest-finance',
-  prompt: ['Margaux lists the decisions on her desk this month. Which are investment decisions, and which are financing decisions?'],
+  prompt: ['Here\u2019s what\u2019s on my desk this month. Which are investment decisions, and which are financing decisions?'],
   categories: [
     { id: 'investment', label: 'Investment decision' },
     { id: 'financing', label: 'Financing decision' },
@@ -65,8 +67,9 @@ export const goalsTrueFalse: ClassifyProblem = {
   kind: 'classify',
   id: 'goals-true-false',
   title: 'What the house is for',
+  host: 'margaux',
   concept: 'shareholder-value',
-  prompt: ['Before you open the doors, Margaux tests you. True or false?'],
+  prompt: ['Quick round before we open the doors. True or false?'],
   categories: [
     { id: 'true', label: 'True' },
     { id: 'false', label: 'False' },
@@ -88,8 +91,9 @@ export const agencyClassify: ClassifyProblem = {
   kind: 'classify',
   id: 'agency-classify',
   title: 'Who is the house working for?',
+  host: 'margaux',
   concept: 'agency',
-  prompt: ['Margaux has been reading the expense claims and the board minutes. Sort each item.'],
+  prompt: ['I\u2019ve been through the expense claims and the board minutes. Sort these for me.'],
   categories: [
     { id: 'type1', label: 'Type I problem' },
     { id: 'type2', label: 'Type II problem' },
@@ -113,6 +117,7 @@ export const savingsNote = defineCalc({
   kind: 'calc',
   id: 'savings-note',
   title: 'The broker’s note',
+  host: 'margaux',
   concept: 'pv-fv',
   uses: ['opportunity-cost'],
   base: { F: 10000, T: 5, r: 5, price: 8000 },
@@ -127,10 +132,10 @@ export const savingsNote = defineCalc({
     const worth = pv > price;
     return {
       prompt: [
-        `A broker offers the house a savings note. You pay ${eur(price)} today, and in ${T} years’ time the note pays back ${eur(F)} in a single sum. Nothing is paid in between.`,
-        `The bank pays ${pct(r)} a year on deposits of similar risk.`,
+        `A broker\u2019s pitching us a savings note. We hand over ${eur(price)} today, and in ${T} years\u2019 time it pays back ${eur(F)}. One lump sum, nothing in between.`,
+        `The bank gives us ${pct(r)} a year on deposits of similar risk. So, is the note worth it?`,
       ],
-      ask: 'What is the note’s payout worth in today’s money? Should the house buy it?',
+      ask: 'What\u2019s that payout worth today, and do we buy?',
       timeline: {
         unit: 'year',
         show: T + 2,
@@ -192,6 +197,7 @@ export const laserCutter = defineCalc({
   kind: 'calc',
   id: 'laser-cutter',
   title: 'The laser cutter',
+  host: 'margaux',
   concept: 'npv',
   uses: ['pv-fv', 'opportunity-cost'],
   base: { cost: 23000, saving: 9000, years: 3, r: 4 },
@@ -207,11 +213,11 @@ export const laserCutter = defineCalc({
     const pvs = range(1, years).map((t) => fin.pvSingle(saving, dec(r), t));
     return {
       prompt: [
-        `A supplier offers the house a computer-controlled laser cutter. Fully installed, it costs ${eur(cost)}, payable now.`,
-        `Margaux estimates it will save ${eur(saving)} of hand-cutting labour in each of the next ${yearsWord(years)} years, counted at the end of each year. After that it will be obsolete and worth nothing.`,
-        `The house’s spare cash could earn ${pct(r)} a year elsewhere at similar risk.`,
+        `A supplier wants to sell us a laser cutter. ${eur(cost)}, fully installed, paid now.`,
+        `I reckon it saves us ${eur(saving)} of hand-cutting a year for the next ${yearsWord(years)} years. Count each saving at the end of its year. After that it\u2019s junk, worth nothing.`,
+        `Our spare cash could earn ${pct(r)} a year elsewhere at similar risk.`,
       ],
-      ask: 'What is the net present value of buying the cutter? Should the house buy it?',
+      ask: 'What\u2019s the NPV, and do we buy it?',
       timeline: {
         unit: 'year',
         show: years + 2,
@@ -268,6 +274,7 @@ export const laserCutter = defineCalc({
         buy: {
           valueDelta: value,
           cashDelta: -cost,
+          holding: { id: 'laser-cutter', label: 'Laser cutter: labour saved', start: 1, years, amount: saving },
           news: pos ? `Laser cutter installed: it adds ${eur(value)} of value to the house.` : `Laser cutter bought with a negative NPV: ${eur(-value)} of value destroyed.`,
         },
         skip: {
@@ -275,7 +282,7 @@ export const laserCutter = defineCalc({
           news: pos ? `Passed on the laser cutter, giving up ${eur(value)} of value.` : `Rightly passed on the cutter. It would have destroyed ${eur(-value)}.`,
         },
       },
-      cfoLine: `Laser cutter: NPV ${eur(value)} at ${pct(r)}. ${pos ? 'Positive, so Margaux bought it.' : 'Negative, so Margaux passed.'}`,
+      cfoLine: `Laser cutter: NPV ${eur(value)} at ${pct(r)}. ${pos ? 'Positive, so I bought it.' : 'Negative, so I passed.'}`,
     };
   },
 });
@@ -286,6 +293,7 @@ export const designPrize = defineCalc({
   kind: 'calc',
   id: 'design-prize',
   title: 'The design prize',
+  host: 'margaux',
   concept: 'perpetuity',
   base: { C: 5000, r: 4, price: 110000 },
   vary: (rng) => {
@@ -298,10 +306,10 @@ export const designPrize = defineCalc({
     const accept = price < pv;
     return {
       prompt: [
-        `The house wants to fund the Atelier Noor Prize at the National College of Art and Design: ${eur(C)} a year to a graduating student, forever. The first prize is awarded in one year’s time.`,
-        `The college offers to run the prize forever in return for a single gift of ${eur(price)} today. Otherwise the house would pay each prize itself. Its cash earns ${pct(r)} a year.`,
+        `I\u2019d love an Atelier Noor Prize at the art college: ${eur(C)} a year to a graduating student, forever. First prize awarded a year from now.`,
+        `The college says: give us ${eur(price)} today and we\u2019ll run it forever. Or we pay each prize ourselves, out of cash that earns ${pct(r)} a year.`,
       ],
-      ask: 'What does paying the prize yourself cost in today’s money? Should the house accept the college’s offer?',
+      ask: 'What would paying it ourselves cost in today\u2019s money? Take the college\u2019s deal?',
       timeline: {
         unit: 'year',
         show: 4,
@@ -340,8 +348,8 @@ export const designPrize = defineCalc({
         decision: 'Compare the two costs in today’s money.',
       },
       outcomes: {
-        accept: { valueDelta: 0, news: 'The Atelier Noor Prize is endowed.' },
-        decline: { valueDelta: 0, news: 'The house will pay the prize itself each year.' },
+        accept: { valueDelta: 0, cashDelta: -price, news: 'The Atelier Noor Prize is endowed.' },
+        decline: { valueDelta: 0, holding: { id: 'design-prize', label: 'Design prize, paid each year', start: 1, amount: -C }, news: 'The house will pay the prize itself each year.' },
       },
       cfoLine: `Design prize: ${eur(C)} a year forever is worth ${eur(pv)} at ${pct(r)}; the college asks ${eur(price)}.`,
     };
@@ -352,6 +360,7 @@ export const royaltySale = defineCalc({
   kind: 'calc',
   id: 'royalty-sale',
   title: 'The Liffey Rose royalty',
+  host: 'theo',
   concept: 'delayed-perpetuity',
   uses: ['perpetuity', 'agency'],
   base: { C: 10000, r: 8, first: 3, offer: 95000 },
@@ -367,11 +376,12 @@ export const royaltySale = defineCalc({
     const keep = value > offer;
     return {
       prompt: [
-        `A homeware brand wants to print the house’s signature Liffey Rose pattern on its cushions and throws. It will pay Atelier Noor a royalty of ${eur(C)} a year, forever.`,
-        `There is a catch. Its factory needs retooling, so the first payment arrives in ${yearsWord(first)} years’ time, with one every year after that.`,
-        `Theo has found a finance firm that will buy the whole royalty stream today for ${eur(offer)} in cash. His bonus is based on cash received this year, and he is keen to sign. Money invested elsewhere at similar risk earns ${pct(r)} a year.`,
+        { who: 'theo', mood: 'happy', text: `Big news! A homeware brand wants the Liffey Rose on its cushions. They\u2019ll pay us ${eur(C)} a year. Forever!` },
+        { who: 'theo', text: `Tiny catch: their factory\u2019s retooling, so the first payment lands in ${yearsWord(first)} years\u2019 time. Then every year after that.` },
+        { who: 'theo', mood: 'happy', text: `But I\u2019ve found a finance firm that\u2019ll buy the whole stream off us today for ${eur(offer)} cash. Cash this year! Sign?` },
+        { who: 'margaux', text: `Hold on. Money invested elsewhere at similar risk earns ${pct(r)}. Let\u2019s see what forever is actually worth.` },
       ],
-      ask: `What is the royalty stream worth today? Should the house sell it for ${eur(offer)}?`,
+      ask: `What\u2019s the royalty worth today, and do we sell for ${eur(offer)}?`,
       timeline: {
         unit: 'year',
         show: first + 3,
@@ -420,7 +430,7 @@ export const royaltySale = defineCalc({
         decision: 'Compare today’s value with the cash offered.',
       },
       outcomes: {
-        keep: { valueDelta: value, news: `Liffey Rose licence signed and kept: it adds ${eur(value)} to the house’s value.` },
+        keep: { valueDelta: value, holding: { id: 'liffey-rose', label: 'Liffey Rose royalty', start: first, amount: C }, news: `Liffey Rose licence signed and kept: it adds ${eur(value)} to the house’s value.` },
         sell: {
           valueDelta: offer,
           cashDelta: offer,
@@ -438,6 +448,7 @@ export const idrisRoyalty = defineCalc({
   kind: 'calc',
   id: 'idris-royalty',
   title: 'Idris’s offer',
+  host: 'idris',
   concept: 'growing-perpetuity',
   uses: ['agency'],
   base: { C0: 10000, g: 5, r: 10, offer: 180000, basis: 'last' as 'last' | 'next' },
@@ -455,13 +466,12 @@ export const idrisRoyalty = defineCalc({
     const keep = value > offer;
     return {
       prompt: [
-        'Last year the house licensed its Ha’penny check print to a Donegal mill. The mill pays a royalty once a year, and the royalty grows with the mill’s sales.',
-        basis === 'last'
-          ? `The royalty just paid was ${eur(C0)}. Margaux expects it to grow ${pct(g)} a year, indefinitely.`
-          : `Next year’s royalty will be ${eur(C0)}, and Margaux expects it to grow ${pct(g)} a year after that, indefinitely.`,
-        `Idris Kell, who holds 60% of the shares, proposes that the house sell the royalty to his family’s textile firm for ${eur(offer)}. With his votes the motion passes unless you object. The house’s cost of capital is ${pct(r)}.`,
+        { who: 'idris', text: 'That Ha\u2019penny check print you licensed to the Donegal mill last year. Pays a royalty once a year, growing with their sales.' },
+        { who: 'idris', text: basis === 'last' ? `The royalty you just received was ${eur(C0)}. It should grow ${pct(g)} a year, indefinitely.` : `Next year\u2019s royalty will be ${eur(C0)}, and it should grow ${pct(g)} a year after that, indefinitely.` },
+        { who: 'idris', mood: 'happy', text: `My family\u2019s firm will take it off your hands for ${eur(offer)}. I have 60% of the votes, so it\u2019s really a formality.` },
+        { who: 'margaux', mood: 'worried', text: `You can object. Our cost of capital is ${pct(r)}. Check the price before he gets his way.` },
       ],
-      ask: 'What is the royalty worth today? Should the house accept Idris’s offer?',
+      ask: `What\u2019s the royalty worth today? Do you object to the sale?`,
       timeline: {
         unit: 'year',
         show: 4,
@@ -521,6 +531,7 @@ export const idrisRoyalty = defineCalc({
       outcomes: {
         keep: {
           valueDelta: 0,
+          holding: { id: 'hapenny-royalty', label: 'Ha’penny royalty', start: 1, amount: C1, growth: g },
           news: keep
             ? `You objected. The Ha’penny royalty, worth ${eur(value)}, stays with the house. Idris is not pleased.`
             : `You blocked a sale at ${eur(offer)}, above the royalty’s ${eur(value)} value: ${eur(offer - value)} forgone.`,
@@ -542,6 +553,7 @@ export const apprenticeFund = defineCalc({
   kind: 'calc',
   id: 'apprentice-fund',
   title: 'The apprentice fund',
+  host: 'margaux',
   concept: 'annuity',
   base: { C: 12000, T: 6, r: 8, fund: 55000 },
   vary: (rng) => {
@@ -555,10 +567,10 @@ export const apprenticeFund = defineCalc({
     const enough = fund >= pv;
     return {
       prompt: [
-        `The house sponsors an apprentice tailor. The grant is ${eur(C)} at the end of each of the next ${yearsWord(T)} years.`,
-        `Margaux wants to set money aside today in an account earning ${pct(r)} a year, and has earmarked ${eur(fund)}.`,
+        `We\u2019re sponsoring an apprentice tailor: ${eur(C)} at the end of each of the next ${yearsWord(T)} years.`,
+        `I want the money set aside today in an account paying ${pct(r)} a year. I\u2019ve earmarked ${eur(fund)}.`,
       ],
-      ask: `How much must be set aside today? Is ${eur(fund)} enough?`,
+      ask: `How much do we need today? Is ${eur(fund)} enough?`,
       timeline: {
         unit: 'year',
         show: T + 2,
@@ -611,6 +623,7 @@ export const studioLease = defineCalc({
   kind: 'calc',
   id: 'studio-lease',
   title: 'The Capel Street lease',
+  host: 'ferriter',
   concept: 'annuity-due',
   uses: ['annuity'],
   base: { C: 24000, T: 5, r: 6, upfront: 100000 },
@@ -626,12 +639,12 @@ export const studioLease = defineCalc({
     const payUpfront = due > upfront;
     return {
       prompt: [
-        `Atelier Noor has outgrown the spare room. Mrs Ferriter owns a light-filled studio on Capel Street and offers a ${yearsWord(T)}-year lease, with two ways to pay.`,
-        `Option A: ${eur(C)} a year for ${yearsWord(T)} years, paid at the start of each year, so the first payment is due on signing.`,
-        `Option B: a single payment of ${eur(upfront)} today, covering the whole ${yearsWord(T)} years.`,
-        `The bank pays ${pct(r)} a year on the house’s cash.`,
+        { who: 'ferriter', text: `The Capel Street studio is yours for ${yearsWord(T)} years, dear. Two ways to pay.` },
+        { who: 'ferriter', text: `Either ${eur(C)} a year, paid at the start of each year, so the first one\u2019s due the day you sign.` },
+        { who: 'ferriter', mood: 'happy', text: `Or ${eur(upfront)} today for the whole ${yearsWord(T)} years, and we\u2019re done.` },
+        { who: 'margaux', text: `Our cash earns ${pct(r)} a year at the bank. Draw the timeline before you touch a formula.` },
       ],
-      ask: 'What is Option A worth in today’s money? Which option should the house choose?',
+      ask: 'What is paying yearly worth in today\u2019s money? Which do we choose?',
       timeline: {
         unit: 'year',
         show: T + 2,
@@ -689,6 +702,7 @@ export const studioLease = defineCalc({
         yearly: {
           valueDelta: upfront - due,
           cashDelta: -C,
+          holding: { id: 'studio-lease', label: 'Capel Street rent', start: 1, years: T - 1, amount: -C },
           news: payUpfront
             ? `Lease signed on yearly rent. Paying upfront would have saved ${eur(due - upfront)}: value lost.`
             : `Lease signed on yearly rent, saving ${eur(upfront - due)} against the upfront price.`,
@@ -703,6 +717,7 @@ export const cutterContract = defineCalc({
   kind: 'calc',
   id: 'cutter-contract',
   title: 'Bríd’s contract',
+  host: 'margaux',
   concept: 'growing-annuity',
   uses: ['annuity'],
   base: { C: 40000, g: 3, T: 5, r: 6, flat: 42000 },
@@ -719,12 +734,11 @@ export const cutterContract = defineCalc({
     const rising = grow < flatPV;
     return {
       prompt: [
-        `The house needs a head pattern-cutter. Bríd Nolan, the best in Dublin, will join on a ${yearsWord(T)}-year contract. Her agent offers two pay packages.`,
-        `Rising: ${eur(C)} in the first year, increasing by ${pct(g)} each year after that.`,
-        `Flat: ${eur(flat)} every year.`,
-        `Salaries are paid at the end of each year. The house’s cost of capital is ${pct(r)}. Margaux has already worked out that the flat package costs ${eur(flatPV)} in today’s money.`,
+        `Bríd Nolan, the best pattern-cutter in Dublin, will join us for ${yearsWord(T)} years. Her agent sent two packages.`,
+        `Rising: ${eur(C)} in the first year, going up ${pct(g)} every year after. Flat: ${eur(flat)} every year.`,
+        `Salaries are paid at the end of each year, and our cost of capital is ${pct(r)}. I\u2019ve already priced the flat one at ${eur(flatPV)} in today\u2019s money.`,
       ],
-      ask: 'What does the rising package cost in today’s money? Which package should the house offer?',
+      ask: 'What does the rising package cost today? Which do we offer?',
       timeline: {
         unit: 'year',
         show: T + 2,
@@ -775,10 +789,12 @@ export const cutterContract = defineCalc({
       outcomes: {
         rising: {
           valueDelta: flatPV - grow,
+          holding: { id: 'brid-contract', label: 'Bríd’s pay (rising)', start: 1, years: T, amount: -C, growth: g },
           news: rising ? `Bríd signs on the rising package, saving ${eur(flatPV - grow)} in today’s money.` : `Bríd signs on the rising package: ${eur(grow - flatPV)} more than the flat one.`,
         },
         flat: {
           valueDelta: grow - flatPV,
+          holding: { id: 'brid-contract', label: 'Bríd’s pay (flat)', start: 1, years: T, amount: -flat },
           news: rising ? `Bríd signs on the flat package: ${eur(flatPV - grow)} more than the rising one.` : `Bríd signs on the flat package, saving ${eur(grow - flatPV)} in today’s money.`,
         },
       },
@@ -795,13 +811,14 @@ const loanIntro = (ctx: LoanCtx, P: number, r: number, T: number) => {
     return `To fit out the Capel Street studio, the house borrows ${eur(P)} from Merchant’s Quay Bank. Aoife Brennan, the bank’s small-business manager, offers a ${T}-year amortising loan at ${pct(r)} a year.`;
   if (ctx === 'flagship')
     return `Three years on, Atelier Noor buys its flagship: a Georgian townhouse on Merrion Square. Merchant’s Quay Bank lends ${eur(P)} on a ${T}-year mortgage at ${pct(r)} a year.`;
-  return `The house takes out a ${eur(P)}, ${T}-year amortising loan at ${pct(r)} a year.`;
+  return `We\u2019ve taken a ${eur(P)}, ${T}-year amortising loan at ${pct(r)} a year.`;
 };
 
 export const loanPayment = defineCalc({
   kind: 'calc',
   id: 'loan-payment',
   title: 'Checking the bank’s letter',
+  host: 'aoife',
   concept: 'loan-payment',
   uses: ['annuity'],
   base: { P: 120000, r: 7, T: 10, error: 1000, ctx: 'studio' as LoanCtx },
@@ -818,11 +835,12 @@ export const loanPayment = defineCalc({
     const af = fin.annuityFactor(dec(r), T);
     return {
       prompt: [
-        loanIntro(ctx, P, r, T),
-        'Repayments are equal and made once a year, at the end of each year, so the first is one year from today.',
-        `The bank’s letter quotes an annual repayment of ${eur(quoted, 2)}. Margaux asks you to check it before signing.`,
+        { who: 'aoife', text: loanIntro(ctx, P, r, T) },
+        { who: 'aoife', text: 'Equal repayments once a year, at the end of each year, so the first is a year from today.' },
+        { who: 'aoife', mood: 'happy', text: `The letter says ${eur(quoted, 2)} a year. Just sign at the bottom!` },
+        { who: 'margaux', text: 'Never sign a loan you haven\u2019t checked yourself.' },
       ],
-      ask: 'What should the annual repayment be? Do you sign as written?',
+      ask: 'What should the yearly repayment be? Do you sign?',
       timeline: {
         unit: 'year',
         show: T + 1,
@@ -879,11 +897,13 @@ export const loanPayment = defineCalc({
         sign: {
           valueDelta: error === 0 ? 0 : -fin.annuity(error, dec(r), T),
           cashDelta: P,
+          holding: { id: 'bank-loan', label: 'Bank loan repayments', start: 1, years: T, amount: -(pmt + error) },
           news: error === 0 ? `Loan signed at ${eur(pmt, 2)} a year. Fair borrowing: no value created or lost.` : `Signed a letter overcharging ${eur(error)} a year: ${eur(fin.annuity(error, dec(r), T))} of value lost.`,
         },
         query: {
           valueDelta: 0,
           cashDelta: P,
+          holding: { id: 'bank-loan', label: 'Bank loan repayments', start: 1, years: T, amount: -pmt },
           news: error === 0 ? 'Aoife confirms the figure was right. A week lost, nothing more.' : `Aoife apologises: a typing error. The letter is reissued at ${eur(pmt, 2)}.`,
         },
       },
@@ -896,6 +916,7 @@ export const loanBalance = defineCalc({
   kind: 'calc',
   id: 'loan-balance',
   title: 'Halfway through the loan',
+  host: 'margaux',
   concept: 'loan-balance',
   uses: ['annuity', 'loan-payment'],
   base: { P: 120000, r: 7, T: 10, k: 5, ctx: 'studio' as LoanCtx },
@@ -911,10 +932,10 @@ export const loanBalance = defineCalc({
     return {
       prompt: [
         loanIntro(ctx, P, r, T),
-        `It is repaid in equal instalments of ${eur(pmt, 2)} at the end of each year.`,
-        `Margaux is planning ahead. A rival bank may offer to refinance later, so she wants to know: immediately after the ${ordinal(k)} repayment, how much will still be owed, and what fraction of the original ${eur(P)} will have been paid off?`,
+        `We repay ${eur(pmt, 2)} at the end of each year.`,
+        `A rival bank might offer to refinance later. So: straight after the ${ordinal(k)} repayment, how much will we still owe, and what fraction of the ${eur(P)} will be paid off?`,
       ],
-      ask: `What fraction of the loan will have been repaid after ${k} repayments?`,
+      ask: `What fraction of the loan is repaid after ${k} repayments?`,
       timeline: {
         unit: 'year',
         show: T + 1,
@@ -977,6 +998,7 @@ export const interestShare = defineCalc({
   kind: 'calc',
   id: 'interest-share',
   title: 'Where the money goes',
+  host: 'margaux',
   concept: 'interest-share',
   uses: ['loan-payment', 'loan-balance'],
   base: { P: 120000, r: 7, T: 10, k: 1, ctx: 'studio' as LoanCtx },
@@ -993,10 +1015,10 @@ export const interestShare = defineCalc({
     return {
       prompt: [
         loanIntro(ctx, P, r, T),
-        `It is repaid in equal instalments of ${eur(pmt, 2)} at the end of each year.`,
+        `We repay ${eur(pmt, 2)} at the end of each year.`,
         last
-          ? `Just before the final repayment, the balance owed is ${eur(before, 2)}. Margaux wants to know how much of that final repayment is interest.`
-          : 'Margaux wants to know how much of the first repayment is interest, and how much actually pays down the loan.',
+          ? `Just before the final repayment we\u2019ll owe ${eur(before, 2)}. How much of that last payment is interest?`
+          : 'How much of the first repayment is interest, and how much actually chips away at the loan?',
       ],
       ask: `What fraction of the ${last ? 'final' : 'first'} repayment is interest?`,
       timeline: {
@@ -1069,6 +1091,7 @@ export const twoBanks = defineCalc({
   kind: 'calc',
   id: 'two-banks',
   title: 'A second quote',
+  host: 'margaux',
   concept: 'apr-ear',
   base: { apr: 6.9, m: 12, rB: 7 },
   vary: (rng) => {
@@ -1084,12 +1107,11 @@ export const twoBanks = defineCalc({
     const yearlyCost = (Math.abs(earA - rB) / 100) * 120000;
     return {
       prompt: [
-        'Before signing, you ask a second lender for a quote on the same loan.',
-        `Merchant’s Quay Bank: ${pct(apr)} APR, with interest compounded ${word.per}.`,
-        `Harbour Mutual: ${pct(rB, 2)} a year, compounded once a year.`,
-        'Everything else about the two loans is identical.',
+        'I asked a second lender to quote for the same loan. Here are both.',
+        `Merchant\u2019s Quay: ${pct(apr)} APR, with interest compounded ${word.per}.`,
+        `Harbour Mutual: ${pct(rB, 2)} a year, compounded once a year. Everything else is identical.`,
       ],
-      ask: 'What is the effective annual rate on Merchant’s Quay’s loan? Which lender is cheaper?',
+      ask: 'What\u2019s the effective annual rate on Merchant\u2019s Quay\u2019s loan? Which is cheaper?',
       timeline: {
         unit: word.unit,
         show: m,
@@ -1149,6 +1171,91 @@ export const twoBanks = defineCalc({
   },
 });
 
+export const houseMortgage = defineCalc({
+  kind: 'calc',
+  id: 'house-mortgage',
+  title: 'What did the house cost?',
+  host: 'aoife',
+  concept: 'annuity',
+  uses: ['apr-ear', 'loan-payment'],
+  base: { C: 1516, apr: 9, years: 25, deposit: 25 },
+  vary: (rng) => ({
+    C: pickInt(rng, 900, 2400, 1),
+    apr: pickRate(rng, 3, 9, 0.5),
+    years: pickOne(rng, [15, 20, 25, 30]),
+    deposit: pickOne(rng, [10, 20, 25, 30]),
+  }),
+  build: ({ C, apr, years, deposit }) => {
+    const rm = dec(apr) / 12;
+    const n = years * 12;
+    const loan = fin.annuity(C, rm, n);
+    const price = loan / (1 - dec(deposit));
+    return {
+      prompt: [
+        { who: 'aoife', text: `Fun one from the bank. A client bought a house on a ${years}-year fixed-rate mortgage: ${eur(C)} a month, at ${pct(apr)} a year compounded monthly. First payment a month after she got the keys.` },
+        { who: 'aoife', mood: 'happy', text: `On top of the loan she paid a ${pct(deposit)} deposit out of her own pocket. Loan plus deposit bought the house.` },
+        { who: 'margaux', text: 'Same trick as a business property. Work out what she paid for it.' },
+      ],
+      ask: 'What was the purchase price of the house?',
+      timeline: {
+        unit: 'month',
+        show: n,
+        streams: [{ id: 'pay', label: `Monthly payment (${eur(C)})`, periods: range(1, n), direction: 'out' }],
+        valueAt: { prompt: 'Where does the annuity formula put the value of the loan?', period: 0 },
+        explain: `Monthly payments from month 1 to month ${n} (${years} × 12). Their present value at month 0 is the amount borrowed.`,
+      },
+      formula: {
+        options: ['annuity', 'annuity-due', 'ear', 'loan-payment'],
+        correct: 'annuity',
+        explain: 'The loan is the present value of the payments: a level annuity, using the monthly rate and the number of months.',
+      },
+      inputs: [
+        { key: 'C', symbol: 'C', label: 'Monthly payment', unit: 'eur', expected: C, explain: 'Paid every month.' },
+        { key: 'r', symbol: 'r', label: 'Monthly rate', unit: 'pct', expected: apr / 12, explain: `${pct(apr)} ÷ 12 = ${pct(Math.round((apr / 12) * 1e4) / 1e4, 4)} a month.` },
+        { key: 'T', symbol: 'T', label: 'Number of monthly payments', unit: 'count', expected: n, explain: `${years} years × 12 = ${n}.` },
+        { key: 'd', symbol: 'd', label: 'Deposit share of the price', unit: 'pct', expected: deposit, explain: 'Given in the story.' },
+      ],
+      solve: (v) => fin.annuity(v.C, v.r / 100, v.T) / (1 - v.d / 100),
+      answer: { label: 'Purchase price of the house', unit: 'eur', explain: `Loan ${eur(loan, 2)} ÷ ${w2(1 - dec(deposit))} = ${eur(price, 2)}.` },
+      decision: {
+        question: 'How do you get from the loan to the price of the house?',
+        options: [
+          { id: 'divide', label: `Loan ÷ ${w2(1 - dec(deposit))}` },
+          { id: 'multiply', label: `Loan × ${w2(1 + dec(deposit))}` },
+          { id: 'add', label: `Loan + ${pct(deposit)} of the loan` },
+        ],
+        correct: 'divide',
+        why: [
+          { id: 'share', label: `The loan covers ${pct(100 - deposit)} of the price` },
+          { id: 'of-loan', label: `The deposit is ${pct(deposit)} of the loan` },
+          { id: 'interest', label: 'The deposit earns interest too' },
+          { id: 'ear', label: 'The rate has to be converted to an EAR first' },
+        ],
+        correctWhy: 'share',
+        explain: `The deposit is ${pct(deposit)} of the price, so the loan is ${pct(100 - deposit)} of it. Price = loan ÷ ${w2(1 - dec(deposit))}. Adding ${pct(deposit)} of the loan undercounts.`,
+      },
+      working: [
+        `r = \\frac{${rd(apr)}}{12} = ${w4(rm)} \\quad T = ${years} \\times 12 = ${n}`,
+        `PV = \\frac{${w0(C)}}{${w4(rm)}}\\left(1 - \\frac{1}{(1 + ${w4(rm)})^{${n}}}\\right) = €${w2(loan)}`,
+        `\\text{Price} = \\frac{${w2(loan)}}{${w2(1 - dec(deposit))}} = €${w2(price)}`,
+      ],
+      hints: {
+        timeline: 'Monthly, from month 1. Mark the first and the last, then fill between.',
+        formula: 'Equal payments for a fixed number of periods, starting next period.',
+        inputs: 'Everything monthly: the rate per month and the number of months.',
+        answer: `Find the loan first: ${w0(C)} × the annuity factor at ${w4(rm)} for ${n} months. Then the price.`,
+        decision: 'The deposit is a share of the price, not of the loan.',
+      },
+      outcomes: {
+        divide: { valueDelta: 0, news: `The house cost ${eur(price)}.` },
+        multiply: { valueDelta: 0, news: `The house cost ${eur(price)}.` },
+        add: { valueDelta: 0, news: `The house cost ${eur(price)}.` },
+      },
+      cfoLine: `${eur(C)} a month for ${n} months at ${pct(apr)}/12 is a ${eur(loan)} loan, so the house cost ${eur(price)}.`,
+    };
+  },
+});
+
 export const ACT1_PROBLEMS: Problem[] = [
   assetsClassify,
   decisionsClassify,
@@ -1166,4 +1273,5 @@ export const ACT1_PROBLEMS: Problem[] = [
   loanBalance,
   interestShare,
   twoBanks,
+  houseMortgage,
 ];

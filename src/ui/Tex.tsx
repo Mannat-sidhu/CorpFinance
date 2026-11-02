@@ -11,6 +11,7 @@ const SYMBOLS: Record<string, string> = {
   ge: '≥',
   ne: '≠',
   cdots: '⋯',
+  sum: '∑',
   ldots: '…',
   quad: ' ',
   qquad: '  ',

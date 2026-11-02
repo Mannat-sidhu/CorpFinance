@@ -79,3 +79,42 @@ export function amortisationTable(principal: number, r: number, T: number) {
   }
   return { payment: pmt, rows };
 }
+
+/** Rate (decimal) that makes `pv(rate)` equal `target`, by bisection. Used to set and test YTM/IRR answers. */
+export function solveRate(pv: (r: number) => number, target: number, lo = -0.5, hi = 1) {
+  let a = lo;
+  let b = hi;
+  const f = (r: number) => pv(r) - target;
+  for (let i = 0; i < 200; i++) {
+    const m = (a + b) / 2;
+    if (Math.sign(f(m)) === Math.sign(f(a))) a = m;
+    else b = m;
+  }
+  return (a + b) / 2;
+}
+
+/** Bond price with `m` coupons a year: coupon rate and yield are annual, quoted as APRs. */
+export const bondPriceM = (face: number, couponRate: number, ytm: number, years: number, m: number) =>
+  bondPrice((face * couponRate) / m, ytm / m, years * m, face);
+
+/**
+ * Two-stage dividends: D1 grows at g up to year `last`, then stays flat forever.
+ * Value = growing annuity of the first `last` dividends + (D_last / r) discounted from year `last`.
+ */
+export function twoStage(D1: number, r: number, g: number, last: number) {
+  const Dlast = D1 * Math.pow(1 + g, last - 1);
+  return growingAnnuity(D1, r, g, last) + pvSingle(Dlast / r, r, last);
+}
+
+/** Payback period in years, assuming cash arrives evenly within each year. Infinity if never repaid. */
+export function paybackYears(flows: number[]) {
+  let cum = flows[0];
+  for (let t = 1; t < flows.length; t++) {
+    if (flows[t] > 0 && cum + flows[t] >= 0) return t - 1 + -cum / flows[t];
+    cum += flows[t];
+  }
+  return Infinity;
+}
+
+/** IRR (decimal) of a cash-flow list, by bisection between −50% and 100%. */
+export const irr = (flows: number[], lo = -0.5, hi = 1) => solveRate((r) => npv(r, flows), 0, lo, hi);

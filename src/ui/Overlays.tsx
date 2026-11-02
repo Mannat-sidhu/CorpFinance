@@ -4,6 +4,7 @@ import { ACTS, CONCEPTS, FORMULA_SHEET, PRACTISABLE } from '../content';
 import { conceptState, stageOf } from '../engine/mastery';
 import type { Concept, Stage } from '../engine/types';
 import { useGame } from './store';
+import { Chat } from './Chat';
 import { Tex } from './Tex';
 import { Diagram } from './Timeline';
 
@@ -37,39 +38,28 @@ function Overlay({ onClose, center, label, children }: { onClose: () => void; ce
   );
 }
 
-export function LessonView({ concept, compact }: { concept: Concept; compact?: boolean }) {
+/** The cheat card: big idea, time ruler, formula, an example to unfold, and the traps. */
+export function LessonCard({ concept }: { concept: Concept }) {
   const l = concept.lesson;
   return (
-    <article className="lesson">
-      {!compact && <div className="eyebrow">Lesson · Act {ACTS[concept.act - 1].numeral}</div>}
-      <h2>{concept.name}</h2>
-      <div className="prose">
-        {l.plain.map((p, i) => (
-          <p key={i}>{p}</p>
-        ))}
+    <div className="cheat">
+      <div className="cheat-head">
+        <span className="eyebrow">Cheat card</span>
+        <h3 className="cheat-title">{concept.name}</h3>
+        <p className="cheat-idea">{concept.summary}</p>
       </div>
-      {l.timeline && (
-        <>
-          <h3>On the time ruler</h3>
-          <Diagram d={l.timeline} />
-        </>
-      )}
+      {l.timeline && <Diagram d={l.timeline} />}
       {l.formula && (
-        <>
-          <h3>
-            Formula
-            {l.formula.onSheet && <span className="sheet-badge">on the exam sheet</span>}
-          </h3>
-          <div className="formula">
-            <Tex block>{l.formula.tex}</Tex>
-            {l.formula.where && <div className="where">{l.formula.where.join(' · ')}</div>}
-          </div>
-        </>
+        <div className="formula">
+          {l.formula.onSheet && <span className="sheet-badge">on your formula sheet</span>}
+          <Tex block>{l.formula.tex}</Tex>
+          {l.formula.where && <div className="where">{l.formula.where.join(' · ')}</div>}
+        </div>
       )}
       {l.example && (
-        <>
-          <h3>Worked example</h3>
-          <p className="prose" style={{ fontSize: 17 }}>
+        <details className="example">
+          <summary>Show me one worked through</summary>
+          <p className="prose" style={{ fontSize: 16, marginTop: 10 }}>
             {l.example.prompt}
           </p>
           <div className="working">
@@ -82,14 +72,26 @@ export function LessonView({ concept, compact }: { concept: Concept; compact?: b
           <p>
             <strong>Answer:</strong> {l.example.answer}
           </p>
-        </>
+        </details>
       )}
-      <h3>Common traps</h3>
-      <ul className="traps">
+      <div className="traps">
         {l.traps.map((t, i) => (
-          <li key={i}>{t}</li>
+          <div className="trap" key={i}>
+            <span className="trap-tag">Watch out</span>
+            {t}
+          </div>
         ))}
-      </ul>
+      </div>
+    </div>
+  );
+}
+
+/** Full lesson for revision: Margaux's explanation, then the card. */
+export function LessonView({ concept }: { concept: Concept }) {
+  return (
+    <article className="lesson">
+      <Chat beats={concept.lesson.plain.map((text) => ({ who: 'margaux' as const, text }))} />
+      <LessonCard concept={concept} />
     </article>
   );
 }
@@ -132,11 +134,11 @@ export function Ledger() {
   return (
     <div className="ledger">
       <h2>The ledger</h2>
-      <p className="stage-legend">Everything you have learnt. Tap a concept to revise it.</p>
+      <p className="stage-legend">Everything you’ve picked up. Tap one to brush up or practise.</p>
       {acts.map((a) => (
         <div className="act-group" key={a.number}>
           <div className="eyebrow">
-            Act {a.numeral} · {a.title}
+            Chapter {a.numeral} · {a.title}
           </div>
           <ul>
             {a.concepts.map((id) => {
@@ -181,15 +183,14 @@ function FormulaSheetOverlay() {
     <Overlay onClose={() => openFormulas(false)} center label="Formula sheet">
       <div className="sheet-head">
         <div>
-          <div className="eyebrow">FIN40940 Corporate Finance</div>
-          <h2 style={{ fontSize: 24, marginTop: 4 }}>Formulas</h2>
+          <h2 style={{ fontSize: 24 }}>Formula sheet</h2>
         </div>
         <button type="button" className="btn ghost small" onClick={() => openFormulas(false)}>
           Close
         </button>
       </div>
       <p className="muted" style={{ fontSize: 13 }}>
-        The sheet you will be given in the exam, exactly as provided.
+        The seven formulas you get. Everything else, you build from these.
       </p>
       <div className="formula-sheet">
         <ol>

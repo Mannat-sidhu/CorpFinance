@@ -1,7 +1,8 @@
 // Sorting exercise for conceptual topics (assets, decisions, agency).
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { mulberry32, shuffle } from '../engine/rng';
 import type { ClassifyProblem, ConceptId } from '../engine/types';
+import { Bubble, Chat } from './Chat';
 
 export interface ClassifyResult {
   score: number;
@@ -15,10 +16,12 @@ export function ClassifyRunner({
   seed,
   count,
   onDone,
+  intro,
 }: {
   problem: ClassifyProblem;
   seed: number;
   count?: number;
+  intro?: ReactNode;
   onDone: (r: ClassifyResult) => void;
 }) {
   const items = useMemo(() => shuffle(mulberry32(seed), problem.items).slice(0, count ?? problem.show), [problem, seed, count]);
@@ -36,16 +39,14 @@ export function ClassifyRunner({
   };
 
   return (
-    <section className="panel" aria-labelledby="classify-title">
-      <div className="eyebrow">Sort</div>
-      <h2 id="classify-title" className="step-title" style={{ marginTop: 4 }}>
-        {problem.title}
-      </h2>
-      <div className="prose">
-        {problem.prompt.map((p, i) => (
-          <p key={i}>{p}</p>
-        ))}
+    <section aria-labelledby="classify-title">
+      {intro}
+      <div className="game-title">
+        <span className="game-kind">Sorting round</span>
+        <h2 id="classify-title">{problem.title}</h2>
       </div>
+      <Chat beats={problem.prompt} host={problem.host} />
+      <div className="panel">
       {items.map((it, i) => {
         const right = answers[i] === it.category;
         return (
@@ -79,11 +80,25 @@ export function ClassifyRunner({
           </div>
         );
       })}
+      {checked && (
+        <Bubble
+          beat={{
+            who: 'margaux',
+            mood: score === items.length ? 'happy' : score >= items.length / 2 ? 'neutral' : 'worried',
+            text:
+              score === items.length
+                ? 'Clean sweep. Lovely.'
+                : score >= items.length / 2
+                  ? 'Mostly there. Read the ones you missed.'
+                  : 'Hmm. Have a proper look at the reasons above.',
+          }}
+        />
+      )}
       <div className="step-actions">
         <span className="spacer" />
         {checked && (
-          <span className="muted num-tab" style={{ fontSize: 13 }}>
-            {score} / {items.length}
+          <span className="points num-tab">
+            ✦ {score} / {items.length}
           </span>
         )}
         {!checked ? (
@@ -95,6 +110,7 @@ export function ClassifyRunner({
             Continue
           </button>
         )}
+      </div>
       </div>
     </section>
   );

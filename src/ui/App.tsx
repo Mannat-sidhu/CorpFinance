@@ -1,16 +1,35 @@
 // App shell: status bar, news line, and the screens.
-import { useRef, useState } from 'react';
-import { ACTS, ALL_CONCEPT_IDS, CONCEPTS, findSession } from '../content';
+import { useEffect, useRef, useState } from 'react';
+import { ACTS, ALL_CONCEPT_IDS, CHARACTERS, CONCEPTS, findSession, seedHoldings } from '../content';
 import { eur, eurSigned } from '../engine/format';
 import { conceptState, intervalScale, isDue, stageOf, weakest } from '../engine/mastery';
 import { STARTING_VALUE, exportSave, freshSave, importSave } from '../engine/save';
 import type { Act, Stage } from '../engine/types';
 import { Overlays, STAGE_LABEL } from './Overlays';
-import { BossPlayer, PracticePlayer, SessionPlayer } from './Play';
+import { BossPlayer, ExamPlayer, PracticePlayer, SessionPlayer } from './Play';
+import { YearEndScreen } from './YearEnd';
+import { Portrait } from './Portrait';
+import { Stars, starsFor } from './Stars';
 import { useGame, useTicker, type Screen } from './store';
 
+/** Floating +€/−€ chip whenever the house's value moves. */
+function useValueToast(value: number) {
+  const [toast, setToast] = useState<{ delta: number; key: number } | null>(null);
+  const prev = useRef(value);
+  useEffect(() => {
+    const d = value - prev.current;
+    prev.current = value;
+    if (Math.abs(d) < 0.5) return;
+    setToast({ delta: d, key: Date.now() });
+    const t = setTimeout(() => setToast(null), 2800);
+    return () => clearTimeout(t);
+  }, [value]);
+  return toast;
+}
+
 function TopBar() {
-  const { save, screen, go, openLedger } = useGame();
+  const { save, screen, go, back, canGoBack, openLedger, openFormulas } = useGame();
+  const toast = useValueToast(save.value);
   const value = useTicker(save.value);
   const cash = useTicker(save.cash);
   const latest = save.news[0];
@@ -23,14 +42,24 @@ function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-inner">
+        {canGoBack && (
+          <button type="button" className="back-btn" onClick={back} aria-label="Back">
+            ←
+          </button>
+        )}
         <button type="button" className="brand" onClick={() => go({ name: 'map' })}>
-          <small>{playing ? `Act ${playing.act.numeral} · ${playing.session.title}` : 'Corporate finance'}</small>
+          <small>{playing ? `Chapter ${playing.act.numeral} · ${playing.session.title}` : 'A fashion house'}</small>
           {save.houseName}
         </button>
         <div className="metrics" aria-live="polite">
           <div className="metric primary">
             <div className="label">House value</div>
             <div className="value">{eur(value)}</div>
+            {toast && (
+              <span key={toast.key} className={`value-toast ${toast.delta > 0 ? 'up' : 'down'}`}>
+                {eurSigned(toast.delta)}
+              </span>
+            )}
           </div>
           <div className="metric">
             <div className="label">Cash</div>
@@ -39,10 +68,14 @@ function TopBar() {
           <div className="metric">
             <div className="label">Streak</div>
             <div className="value">
+              {save.streak.count > 0 ? '🔥 ' : ''}
               {save.streak.count} {save.streak.count === 1 ? 'day' : 'days'}
             </div>
           </div>
         </div>
+        <button type="button" className="fab-formulas" onClick={() => openFormulas(true)}>
+          <span className="f">ƒ</span> Formulas
+        </button>
         <nav className="nav" aria-label="Main">
           {navItem('Map', { name: 'map' }, screen.name === 'map', 'nav-map')}
           <button type="button" className="ledger-toggle" onClick={() => openLedger(true)}>
@@ -77,106 +110,166 @@ function actProgress(act: Act, sessions: Record<string, unknown>) {
   return { done, total: act.sessions.length };
 }
 
+function Cast() {
+  const ids = ['margaux', 'theo', 'idris', 'ferriter', 'aoife'] as const;
+  return (
+    <div className="cast">
+      {ids.map((id) => (
+        <div className="cast-card" key={id}>
+          <Portrait who={id} size={56} />
+          <div>
+            <strong>{CHARACTERS[id].name}</strong>
+            <span className="muted">{CHARACTERS[id].role}</span>
+            <p>{CHARACTERS[id].vibe}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ActMap() {
   const { save, go } = useGame();
   const resume = save.resume ? findSession(save.resume.sessionId) : null;
+  const firstOpen = ACTS.filter((a) => !a.draft)
+    .flatMap((a) => a.sessions)
+    .find((s) => !save.sessions[s.id]);
   return (
     <>
       <section className="hero">
-        <div className="eyebrow">FIN40940 · Corporate Finance</div>
         <h1>{save.houseName}</h1>
-        <p>
-          Grow a fashion house from a single atelier into a takeover target. Every decision is marked like an exam script, and the house is worth
-          exactly what your decisions make it.
-        </p>
-        {resume && (
-          <button type="button" className="btn" style={{ marginTop: 8 }} onClick={() => go({ name: 'play', sessionId: resume.session.id })}>
-            Resume: {resume.session.title}
+        <p>From one spare room to a takeover target. Every decision moves the house’s value. Make it climb.</p>
+        {resume ? (
+          <button type="button" className="btn big" onClick={() => go({ name: 'play', sessionId: resume.session.id })}>
+            Carry on: {resume.session.title} →
           </button>
-        )}
+        ) : firstOpen ? (
+          <button type="button" className="btn big" onClick={() => go({ name: 'play', sessionId: firstOpen.id })}>
+            Play: {firstOpen.title} →
+          </button>
+        ) : null}
       </section>
-      <div className="acts">
+
+      <div className="chapters">
         {ACTS.map((act) => {
           const { done, total } = actProgress(act, save.sessions);
           const open = !act.draft;
           const bossOpen = open && act.boss && done === total;
-          return (
-            <article key={act.number} className={`act ${open ? 'open' : 'locked'}`}>
-              <div className="numeral" aria-hidden>
-                {act.numeral}
-              </div>
-              <div>
-                <h2>
-                  <span className="sr-only" style={{ position: 'absolute', left: -9999 }}>
-                    Act {act.numeral}:{' '}
-                  </span>
-                  {act.title}
-                </h2>
-                <div className="meta">
-                  {act.lecture} · {act.chapters}
-                  {open ? ` · ${done} of ${total} sessions` : ' · arrives with the lecture'}
+          if (!open)
+            return (
+              <article key={act.number} className="chapter locked">
+                <span className="chapter-n">{act.numeral}</span>
+                <div>
+                  <h2>{act.title}</h2>
+                  <p className="muted">{act.blurb}</p>
                 </div>
-                <p className="muted" style={{ margin: 0 }}>
-                  {act.blurb}
-                </p>
-                {open && (
-                  <>
-                    <div className="act-bar" aria-hidden>
-                      <span style={{ width: `${(done / Math.max(1, total)) * 100}%` }} />
-                    </div>
-                    <ul className="sessions">
-                      {act.sessions.map((s, i) => {
-                        const rec = save.sessions[s.id];
-                        const unlocked = i === 0 || !!save.sessions[act.sessions[i - 1].id] || !!rec;
-                        return (
-                          <li key={s.id}>
-                            <span className="sn">{i + 1}</span>
-                            <span className="st">
-                              <strong>{s.title}</strong>
-                              <span>{s.blurb}</span>
-                            </span>
-                            {rec ? (
-                              <span className="status done">
-                                {rec.score}/{rec.max}
-                              </span>
-                            ) : null}
-                            <button
-                              type="button"
-                              className={`btn small${rec ? ' ghost' : ''}`}
-                              disabled={!unlocked}
-                              onClick={() => go({ name: 'play', sessionId: s.id })}
-                              aria-label={`${rec ? 'Replay' : 'Play'} ${s.title}`}
-                            >
-                              {rec ? 'Replay' : unlocked ? 'Play' : 'Locked'}
-                            </button>
-                          </li>
-                        );
-                      })}
-                      {act.boss && (
-                        <li>
-                          <span className="sn">★</span>
-                          <span className="st">
-                            <strong>Boss round: {act.boss.title}</strong>
-                            <span>A full written question, marked step by step.</span>
-                          </span>
-                          {save.bosses[act.number] && (
-                            <span className="status done">
-                              {save.bosses[act.number].score}/{save.bosses[act.number].max}
-                            </span>
-                          )}
-                          <button type="button" className="btn small" disabled={!bossOpen} onClick={() => go({ name: 'boss', act: act.number })}>
-                            {bossOpen ? 'Begin' : 'Locked'}
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  </>
-                )}
+                <span className="soon">Coming soon</span>
+              </article>
+            );
+          return (
+            <article key={act.number} className="chapter open">
+              <div className="chapter-head">
+                <span className="chapter-n">{act.numeral}</span>
+                <div>
+                  <div className="eyebrow">
+                    Chapter {act.numeral} · {done} of {total} episodes
+                  </div>
+                  <h2>{act.title}</h2>
+                  <p className="muted">{act.blurb}</p>
+                </div>
               </div>
+              <ol className="path">
+                {act.sessions.map((s, i) => {
+                  const rec = save.sessions[s.id];
+                  const prevAct = ACTS[act.number - 2];
+                  const chapterOpen = !prevAct || prevAct.draft || prevAct.sessions.every((x) => save.sessions[x.id]);
+                  const unlocked = (i === 0 ? chapterOpen : !!save.sessions[act.sessions[i - 1].id]) || !!rec;
+                  const current = unlocked && !rec;
+                  return (
+                    <li key={s.id} className={`node${rec ? ' done' : ''}${current ? ' current' : ''}${!unlocked ? ' locked' : ''}`}>
+                      <button
+                        type="button"
+                        className="node-dot"
+                        disabled={!unlocked}
+                        onClick={() => go({ name: 'play', sessionId: s.id })}
+                        aria-label={`${rec ? 'Replay' : 'Play'} episode ${i + 1}: ${s.title}`}
+                      >
+                        {rec ? '✓' : unlocked ? i + 1 : '🔒'}
+                      </button>
+                      <div className="node-title">{s.title}</div>
+                      <div className="node-sub">{rec ? <Stars n={starsFor(rec.score, rec.max)} /> : s.blurb}</div>
+                    </li>
+                  );
+                })}
+                {act.boss && (
+                  <li className={`node boss${save.bosses[act.number] ? ' done' : ''}${bossOpen && !save.bosses[act.number] ? ' current' : ''}${!bossOpen ? ' locked' : ''}`}>
+                    <button
+                      type="button"
+                      className="node-dot"
+                      disabled={!bossOpen}
+                      onClick={() => go({ name: 'boss', act: act.number })}
+                      aria-label={`Boss level: ${act.boss.title}`}
+                    >
+                      {bossOpen ? '♛' : '🔒'}
+                    </button>
+                    <div className="node-title">Boss: {act.boss.title}</div>
+                    <div className="node-sub">
+                      {save.bosses[act.number] ? (
+                        <Stars n={starsFor(save.bosses[act.number].score, save.bosses[act.number].max)} />
+                      ) : (
+                        'No help from Margaux.'
+                      )}
+                    </div>
+                  </li>
+                )}
+                {act.boss && (() => {
+                  const closed = save.yearsClosed.includes(act.number);
+                  const ready = !!save.bosses[act.number] && (act.number === 1 || save.yearsClosed.includes(act.number - 1));
+                  return (
+                    <li className={`node yearend${closed ? ' done' : ''}${ready && !closed ? ' current' : ''}${!ready && !closed ? ' locked' : ''}`}>
+                      <button
+                        type="button"
+                        className="node-dot"
+                        disabled={!ready && !closed}
+                        onClick={() => go({ name: 'yearend', act: act.number })}
+                        aria-label={`Year ${act.number} end`}
+                      >
+                        {closed ? '✓' : ready ? '€' : '🔒'}
+                      </button>
+                      <div className="node-title">Year {act.number} end</div>
+                      <div className="node-sub">{closed ? 'Books closed.' : 'Cash in, cash out, and a little luck.'}</div>
+                    </li>
+                  );
+                })()}
+                {act.exam && (
+                  <li className={`node exam${save.exams[act.number] ? ' done' : ''}${save.bosses[act.number] && !save.exams[act.number] ? ' current' : ''}${!save.bosses[act.number] ? ' locked' : ''}`}>
+                    <button
+                      type="button"
+                      className="node-dot"
+                      disabled={!save.bosses[act.number]}
+                      onClick={() => go({ name: 'exam', act: act.number })}
+                      aria-label="Exam room"
+                    >
+                      {save.bosses[act.number] ? '✎' : '🔒'}
+                    </button>
+                    <div className="node-title">Exam room</div>
+                    <div className="node-sub">
+                      {save.exams[act.number] ? (
+                        <Stars n={starsFor(save.exams[act.number].score, save.exams[act.number].max)} />
+                      ) : (
+                        `${act.exam.problems.length} paper-style questions. No tips.`
+                      )}
+                    </div>
+                  </li>
+                )}
+              </ol>
             </article>
           );
         })}
       </div>
+
+      <h2 className="section-title">The cast</h2>
+      <Cast />
     </>
   );
 }
@@ -193,17 +286,16 @@ function Progress() {
   return (
     <>
       <section className="hero">
-        <div className="eyebrow">Progress</div>
-        <h1>Where you stand</h1>
+        <h1>How you’re doing</h1>
         <p>
-          {daysLeft > 0 ? `${daysLeft} days to the exam.` : 'Exam day has passed.'} Spot checks are spaced at {Math.round(intervalScale(save.settings.examDate, now) * 100)}% of
-          the full interval to fit.
+          {daysLeft > 0 ? `${daysLeft} days to go.` : 'The big day has passed.'} Pop quizzes come round every so often to keep things fresh
+          {intervalScale(save.settings.examDate, now) < 1 ? ', a bit more often as the date gets closer' : ''}.
         </p>
       </section>
       {ACTS.filter((a) => a.concepts.length).map((a) => (
         <section key={a.number}>
           <div className="eyebrow">
-            Act {a.numeral} · {a.title}
+            Chapter {a.numeral} · {a.title}
           </div>
           <div className="stat-grid">
             {stages.map((st) => (
@@ -221,24 +313,24 @@ function Progress() {
       ))}
       <div className="play" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 32 }}>
         <section>
-          <h2 style={{ fontSize: 22 }}>Spot checks due</h2>
+          <h2 style={{ fontSize: 22 }}>Pop quizzes waiting</h2>
           {due.length ? (
             <ul className="ledger" style={{ listStyle: 'none', padding: 0 }}>
               {due.map((id) => (
                 <li key={id} className="spread" style={{ padding: '10px 0', borderBottom: '1px solid var(--rule)' }}>
                   <span>{CONCEPTS[id].name}</span>
                   <button type="button" className="btn small" onClick={() => go({ name: 'practice', concept: id })}>
-                    Check now
+                    Take it
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">None due. They will appear at the end of sessions as they fall due.</p>
+            <p className="muted">Nothing waiting. They’ll pop up at the end of episodes.</p>
           )}
         </section>
         <section>
-          <h2 style={{ fontSize: 22 }}>Weakest concepts</h2>
+          <h2 style={{ fontSize: 22 }}>Shakiest ideas</h2>
           {weak.length ? (
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {weak.map(({ id, c }) => (
@@ -253,12 +345,12 @@ function Progress() {
               ))}
             </ul>
           ) : (
-            <p className="muted">Nothing attempted yet.</p>
+            <p className="muted">Nothing played yet.</p>
           )}
         </section>
       </div>
       <p className="muted" style={{ marginTop: 28, fontSize: 13 }}>
-        Value since founding: {eurSigned(save.value - STARTING_VALUE)} · Sessions played: {save.sessionsPlayed} · Concepts met:{' '}
+        Value since you opened: {eurSigned(save.value - STARTING_VALUE)} · Episodes played: {save.sessionsPlayed} · Ideas met:{' '}
         {ALL_CONCEPT_IDS.filter((id) => conceptState(save, id).stage !== 'locked').length} of {ALL_CONCEPT_IDS.length}
       </p>
     </>
@@ -274,8 +366,7 @@ function Settings() {
   return (
     <>
       <section className="hero">
-        <div className="eyebrow">Settings</div>
-        <h1>The house</h1>
+        <h1>Settings</h1>
       </section>
       <div className="form-row">
         <label htmlFor="house">Name of the house</label>
@@ -288,7 +379,7 @@ function Settings() {
         />
       </div>
       <div className="form-row">
-        <label htmlFor="exam">Exam date (sets how far apart spot checks are)</label>
+        <label htmlFor="exam">Your deadline (pop quizzes speed up as it gets close)</label>
         <input
           id="exam"
           type="date"
@@ -311,9 +402,9 @@ function Settings() {
         </select>
       </div>
 
-      <h2 style={{ fontSize: 22, marginTop: 34 }}>Moving between devices</h2>
+      <h2 style={{ fontSize: 22, marginTop: 34 }}>Your save file</h2>
       <p className="muted" style={{ maxWidth: 560 }}>
-        Progress is saved in this browser. To carry on elsewhere, export it here and import the file on the other device.
+        Progress saves in this browser. Export a copy to keep it safe, or to carry on in another browser.
       </p>
       <div className="row">
         <button type="button" className="btn" onClick={() => exportSave(save)}>
@@ -331,7 +422,7 @@ function Settings() {
             const f = e.target.files?.[0];
             if (!f) return;
             try {
-              const data = await importSave(f);
+              const data = await importSave(f, seedHoldings);
               if (!window.confirm('Replace the progress on this device with the imported file?')) return;
               setSave(() => data);
               setMsg('Progress imported.');
@@ -371,29 +462,29 @@ function Settings() {
 function Welcome() {
   const { save, setSave, go } = useGame();
   return (
-    <main className="page" style={{ maxWidth: 680, paddingTop: '12vh' }}>
-      <div className="eyebrow">FIN40940 · Corporate Finance</div>
-      <h1 style={{ fontSize: 46, margin: '8px 0 18px' }}>Found a fashion house.</h1>
-      <div className="prose">
-        <p>
-          You will grow a fictional house from one atelier into a takeover target. Each finance idea arrives when the business needs it, and every
-          calculation is marked in five steps, as an examiner would: timeline, formula, inputs, answer, decision.
-        </p>
-        <p>Your score is the house’s value. Good decisions raise it. Bad ones destroy it.</p>
+    <main className="page welcome">
+      <div className="welcome-cast">
+        {(['idris', 'margaux', 'theo'] as const).map((id) => (
+          <Portrait key={id} who={id} size={id === 'margaux' ? 108 : 84} mood="happy" />
+        ))}
       </div>
-      <div className="form-row" style={{ marginTop: 24 }}>
-        <label htmlFor="name">Name of the house (you can change it later)</label>
+      <h1>Open your own fashion house.</h1>
+      <p className="welcome-lede">
+        Strike deals, dodge bad offers, outsmart a sly investor and a bonus-hungry manager. Every call you make moves the house’s value. Make it climb.
+      </p>
+      <div className="form-row" style={{ margin: '28px auto 18px' }}>
+        <label htmlFor="name">Name your house</label>
         <input id="name" className="text-input" value={save.houseName} maxLength={40} onChange={(e) => setSave((s) => ({ ...s, houseName: e.target.value }))} />
       </div>
       <button
         type="button"
-        className="btn"
+        className="btn big"
         onClick={() => {
           setSave((s) => ({ ...s, houseName: s.houseName.trim() || 'Atelier Noor', createdAt: Date.now() }));
           go({ name: 'map' });
         }}
       >
-        Open the doors
+        Open the doors →
       </button>
     </main>
   );
@@ -409,6 +500,8 @@ export function App() {
         {screen.name === 'map' && <ActMap />}
         {screen.name === 'play' && <SessionPlayer key={screen.sessionId} sessionId={screen.sessionId} />}
         {screen.name === 'boss' && <BossPlayer actNumber={screen.act} />}
+        {screen.name === 'exam' && <ExamPlayer actNumber={screen.act} />}
+        {screen.name === 'yearend' && <YearEndScreen year={screen.act} />}
         {screen.name === 'practice' && <PracticePlayer key={screen.concept} concept={screen.concept} />}
         {screen.name === 'progress' && <Progress />}
         {screen.name === 'settings' && <Settings />}

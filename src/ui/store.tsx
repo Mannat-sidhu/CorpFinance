@@ -1,16 +1,20 @@
 // Game state: one SaveData object, persisted through the SaveStore on every change.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { recordAttempt, recordSpotCheck, introduce } from '../engine/mastery';
+import { addHoldings, holdingsOf } from '../engine/holdings';
 import { LocalSaveStore, freshSave, type SaveData, type SaveStore } from '../engine/save';
+import { seedHoldings } from '../content';
 import type { ConceptId, Outcome, Stage } from '../engine/types';
 
-const store: SaveStore = new LocalSaveStore();
+const store: SaveStore = new LocalSaveStore(seedHoldings);
 
 export type Screen =
   | { name: 'welcome' }
   | { name: 'map' }
   | { name: 'play'; sessionId: string }
   | { name: 'boss'; act: number }
+  | { name: 'exam'; act: number }
+  | { name: 'yearend'; act: number }
   | { name: 'practice'; concept: ConceptId }
   | { name: 'progress' }
   | { name: 'settings' };
@@ -26,12 +30,15 @@ interface Game {
   setSave: (fn: (s: SaveData) => SaveData) => void;
   screen: Screen;
   go: (s: Screen) => void;
+  /** Return to the previous screen (the map if there is none). */
+  back: () => void;
+  canGoBack: boolean;
   overlays: Overlays;
   openLesson: (id: ConceptId | null) => void;
   openFormulas: (open: boolean) => void;
   openLedger: (open: boolean) => void;
-  /** Apply a decision's consequence to value, cash and the news feed. */
-  applyOutcome: (o: Outcome) => void;
+  /** Apply a decision's consequence to value, cash, holdings and the news feed. `chapter` dates any holding. */
+  applyOutcome: (o: Outcome, chapter?: number) => void;
   /** Record a worked problem towards mastery; returns any promotion. */
   recordWork: (concept: ConceptId, clean: boolean, spotCheck: boolean) => Stage | null;
   meet: (concept: ConceptId) => void;
@@ -64,6 +71,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [save, setSaveState] = useState<SaveData>(() => initial ?? freshSave());
   const [screen, setScreen] = useState<Screen>(() => (initial ? { name: 'map' } : { name: 'welcome' }));
   const [overlays, setOverlays] = useState<Overlays>({ lesson: null, formulas: false, ledger: false });
+  const [, setHistory] = useState<Screen[]>([]);
   const latest = useRef(save);
   latest.current = save;
 
@@ -86,17 +94,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [save.settings.theme]);
 
   const go = useCallback((s: Screen) => {
-    setScreen(s);
+    setScreen((cur) => {
+      if (cur.name !== 'welcome') setHistory((h) => [...h.slice(-20), cur]);
+      return s;
+    });
+    setOverlays((o) => ({ ...o, ledger: false }));
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  const back = useCallback(() => {
+    setHistory((h) => {
+      const prev = h[h.length - 1] ?? { name: 'map' };
+      setScreen(prev);
+      return h.slice(0, -1);
+    });
     setOverlays((o) => ({ ...o, ledger: false }));
     window.scrollTo({ top: 0 });
   }, []);
 
   const applyOutcome = useCallback(
-    (o: Outcome) =>
+    (o: Outcome, chapter?: number) =>
       setSave((s) => ({
         ...s,
         value: s.value + o.valueDelta,
         cash: s.cash + (o.cashDelta ?? 0),
+        holdings: chapter ? addHoldings(s.holdings, holdingsOf(o), chapter) : s.holdings,
         news: [{ at: Date.now(), delta: o.valueDelta, news: o.news }, ...s.news].slice(0, 50),
       })),
     [setSave],
@@ -125,6 +147,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setSave,
     screen,
     go,
+    back,
+    canGoBack: screen.name !== 'map' && screen.name !== 'welcome',
     overlays,
     openLesson: (id) => setOverlays((o) => ({ ...o, lesson: id })),
     openFormulas: (open) => setOverlays((o) => ({ ...o, formulas: open })),

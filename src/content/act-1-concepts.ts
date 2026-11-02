@@ -1,4 +1,4 @@
-// Act I lessons (Lectures 1–2, BMA Ch1–2). Examples are the lecturer's own where possible.
+// Act I lessons. Explained by Margaux, in her voice.
 import type { Concept } from '../engine/types';
 
 const c = (x: Omit<Concept, 'act'>): Concept => ({ act: 1, ...x });
@@ -27,10 +27,10 @@ export const ACT1_CONCEPTS: Concept[] = [
     summary: 'Investment: which real assets to buy. Financing: where the money comes from.',
     lesson: {
       plain: [
-        'Corporate finance asks two questions, and the lecture puts it simply: where to get the money, and where to invest it.',
+        'All of corporate finance comes down to two questions: where do we get the money, and where do we put it?',
         'The investment decision (also called capital budgeting) is which real assets to buy: a machine, a new collection, a second boutique.',
         'The financing decision is how to pay for them: borrow (debt, such as a bank loan or a bond) or sell part of the business (equity, that is shares).',
-        'As the lecturer says, that is broadly everything in business.',
+        'Answer those two well and you have run a business.',
       ],
       traps: [
         'Buying a machine with a bank loan involves both decisions. Buying the machine is the investment decision; taking the loan is the financing decision. Judge them separately.',
@@ -45,14 +45,14 @@ export const ACT1_CONCEPTS: Concept[] = [
     lesson: {
       plain: [
         'Whose interests should the financial manager serve? The widely agreed answer is the shareholders: decisions should maximise the value of their stake.',
-        'The lecture gives four reasons. Shareholders own the business. They control it, by electing the board. In some countries it is the law. And they are the residual claimants: the bank, staff and suppliers all have fixed, contracted payoffs, so any extra value the business creates goes to the shareholders.',
+        'Four reasons. Shareholders own the business. They control it, by electing the board. In some countries it is the law. And they are the residual claimants: the bank, staff and suppliers all have fixed, contracted payoffs, so any extra value the business creates goes to the shareholders.',
         'Because everyone else is paid a fixed amount, maximising shareholder value usually means maximising the market value of the whole firm.',
         'Finance is about decisions for the future. Accounting (financial reporting) records and communicates the effects of past decisions. Accounting data feed finance decisions, but the focus is the future.',
         'In this game, the value shown at the top is the house\'s value to its owners. Good decisions raise it; bad ones visibly destroy it.',
       ],
       traps: [
         'Maximising this year\'s accounting profit is not the same thing. Profit ignores when the cash arrives and how risky it is.',
-        'The goal is debated (for example, over ESG concerns), but in this module the objective remains maximising shareholder value.',
+        'People argue about this goal (ESG, for one), but it is still the yardstick we use.',
       ],
     },
   }),
@@ -80,7 +80,7 @@ export const ACT1_CONCEPTS: Concept[] = [
     summary: 'Grow forward with (1 + r)^T; discount back with 1/(1 + r)^T.',
     lesson: {
       plain: [
-        'The lecture compares cash at different dates to different currencies. You cannot add €150 and $300 without converting one into the other first. In the same way, you cannot add a euro today and a euro in three years until you convert them to the same date.',
+        'Think of cash at different dates as different currencies. You cannot add €150 and $300 without converting one into the other first. In the same way, you cannot add a euro today and a euro in three years until you convert them to the same date.',
         'Growing forward: €1 invested today at r becomes €(1 + r) after one year, €(1 + r)² after two, and €(1 + r)^T after T years. This is future value.',
         'Discounting back: €1 received in year T is worth 1/(1 + r)^T today. That fraction is the discount factor, the “exchange rate” from year-T euros into today\'s euros.',
         'Always draw a timeline first. Today is year 0. A payment “in five years” sits at year 5.',
@@ -95,7 +95,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       },
       formula: { tex: 'PV = \\frac{C_{T}}{(1 + r)^{T}} \\qquad DF_{T} = \\frac{1}{(1 + r)^{T}}', where: ['C_T: cash flow at year T', 'r: opportunity cost of capital', 'T: number of years from today'] },
       example: {
-        prompt: 'A new car will cost $10,000 in five years. The interest rate is 5%. How much must you set aside today? (BMA Ch2 P12a)',
+        prompt: 'A new car will cost $10,000 in five years. The interest rate is 5%. How much must you set aside today?',
         working: ['PV = \\frac{10,000}{1.05^{5}} = \\frac{10,000}{1.27628}', 'PV = \\$7,835.26'],
         answer: '$7,835.26',
       },
@@ -113,7 +113,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       plain: [
         'Net present value is the value today of all of a project\'s cash flows, net of what it costs. The cost today is the year-0 cash flow, C₀, and it is negative.',
         'Convert each cash flow into today\'s euros with its discount factor, then add them up.',
-        'The rule: take projects with a positive NPV and reject those with a negative NPV. If you must choose, rank them by NPV. The lecture puts it strongly: all capital budgeting reduces to this expression.',
+        'The rule: take projects with a positive NPV and reject those with a negative NPV. If you must choose, rank them by NPV. Every investment decision in this house comes back to this one sum.',
       ],
       timeline: {
         periods: 3,
@@ -123,7 +123,7 @@ export const ACT1_CONCEPTS: Concept[] = [
           { at: 2, label: '90,000', kind: 'in' },
           { at: 3, label: '90,000', kind: 'in' },
         ],
-        caption: 'The lecture’s lighting-system example.',
+        caption: 'A lighting system: pay now, save for three years.',
       },
       formula: {
         tex: 'NPV = C_{0} + \\frac{C_{1}}{1 + r} + \\frac{C_{2}}{(1 + r)^{2}} + \\cdots + \\frac{C_{T}}{(1 + r)^{T}}',
@@ -131,7 +131,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       },
       example: {
         prompt:
-          'A lighting system costs $230,000 installed and saves $90,000 in each of the next three years. The interest rate is 4%. Is it a good investment? (Lecture 2)',
+          'A lighting system costs $230,000 installed and saves $90,000 in each of the next three years. The interest rate is 4%. Is it a good investment?',
         working: [
           'NPV = -230,000 + \\frac{90,000}{1.04} + \\frac{90,000}{1.04^{2}} + \\frac{90,000}{1.04^{3}}',
           'NPV = -230,000 + 86,538 + 83,210 + 80,010',
@@ -152,13 +152,13 @@ export const ACT1_CONCEPTS: Concept[] = [
     lesson: {
       plain: [
         'Owners hire managers to run the business for them. The managers are their agents. Agents may pursue their own interests instead of the owners\'. As Adam Smith noted in 1776, people managing “other people\'s money” rarely watch over it as carefully as their own.',
-        'Type I: managers against shareholders. Managers want wealth, perks and power; shareholders want the firm\'s value maximised. The lecture\'s example is the conflict between Michael O\'Leary and the Irish pension funds that own Ryanair shares.',
-        'Type II: large shareholders against small shareholders. A controlling holder can use their votes to benefit themselves at the small holders\' expense. The lecture\'s example is Mark Zuckerberg and small shareholders in Meta.',
+        'Type I: managers against shareholders. Managers want wealth, perks and power; shareholders want the firm\'s value maximised. Think of a chief executive with a huge salary and a private jet, paid for by pension funds that own the shares.',
+        'Type II: large shareholders against small shareholders. A controlling holder can use their votes to benefit themselves at the small holders\' expense. Think of a founder whose super-voting shares outvote everyone else.',
         'Agency costs come in two kinds. Direct costs: value lost through mismanagement and the conflict itself. Indirect costs: money spent to reduce the conflict, such as audits and monitoring.',
         'Remedies include tying managers\' pay to performance, a board that holds managers to account, and shareholders\' votes, including proxy votes.',
       ],
       traps: [
-        'A founder who is also a large shareholder can still cause a Type II problem by gaining at the small shareholders\' expense (mock exam Q11).',
+        'A founder who is also a large shareholder can still cause a Type II problem by gaining at the small shareholders\' expense.',
         'Spending on monitoring is itself an agency cost (the indirect kind), even though it is meant to help.',
       ],
     },
@@ -186,7 +186,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       },
       formula: { tex: 'PV = \\frac{C}{r}', onSheet: true, where: ['C: payment each period, first one at year 1'] },
       example: {
-        prompt: 'You win $100,000 a year forever. The interest rate is 10%. What is it worth today? (Lecture 2)',
+        prompt: 'You win $100,000 a year forever. The interest rate is 10%. What is it worth today?',
         working: ['PV = \\frac{100,000}{0.10} = \\$1,000,000'],
         answer: '$1,000,000',
       },
@@ -221,7 +221,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       },
       formula: { tex: 'PV_{0} = \\frac{C / r}{(1 + r)^{t - 1}}', where: ['t: year of the first payment'] },
       example: {
-        prompt: 'At 10%, what is the PV of $1 a year forever, with the first payment in year 8? (BMA Ch2 P8b, exact)',
+        prompt: 'At 10%, what is the PV of $1 a year forever, with the first payment in year 8?',
         working: ['\\text{Value at year 7} = \\frac{1}{0.10} = 10', 'PV_{0} = \\frac{10}{1.10^{7}} = 5.13'],
         answer: 'About $5.13',
       },
@@ -254,7 +254,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       },
       formula: { tex: 'PV = \\frac{C_{1}}{r - g}', onSheet: true, where: ['C₁: payment at year 1', 'g: growth rate, with g < r'] },
       example: {
-        prompt: 'Land produces income that grows 5% a year. The first year’s income is $10,000 and r = 10%. What is the land worth? (BMA Ch2 P8d)',
+        prompt: 'Land produces income that grows 5% a year. The first year’s income is $10,000 and r = 10%. What is the land worth?',
         working: ['PV = \\frac{10,000}{0.10 - 0.05} = \\$200,000'],
         answer: '$200,000',
       },
@@ -272,7 +272,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       plain: [
         'An annuity pays the same amount C for a fixed number of periods T. In an ordinary annuity the first payment is one period from now, so “at the end of each year”.',
         'You can think of it as a perpetuity starting now, minus a perpetuity that starts after T years. That gives the formula on the sheet.',
-        'The part in brackets times 1/r is the present value annuity factor (PVAF), the lecture’s name for it.',
+        'The part in brackets times 1/r is called the present value annuity factor (PVAF).',
       ],
       timeline: {
         periods: 6,
@@ -292,7 +292,7 @@ export const ACT1_CONCEPTS: Concept[] = [
         where: ['T: number of payments', 'first payment at year 1'],
       },
       example: {
-        prompt: 'School fees of $12,000 are due at the end of each of the next six years. At 8%, how much must you set aside today? (BMA Ch2 P12b)',
+        prompt: 'School fees of $12,000 are due at the end of each of the next six years. At 8%, how much must you set aside today?',
         working: ['PV = \\frac{12,000}{0.08}\\left(1 - \\frac{1}{1.08^{6}}\\right)', 'PV = 150,000 \\times (1 - 0.63017) = \\$55,474.56'],
         answer: '$55,474.56',
       },
@@ -368,7 +368,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       },
       example: {
         prompt:
-          'You retire with $2 million, live 15 more years, r = 8% and inflation is 4%. What first-year spending, rising with inflation, will the savings support? (BMA Ch2 P32)',
+          'You retire with $2 million, live 15 more years, r = 8% and inflation is 4%. What first-year spending, rising with inflation, will the savings support?',
         working: [
           '2,000,000 = \\frac{C_{1}}{0.08 - 0.04}\\left(1 - \\frac{1.04^{15}}{1.08^{15}}\\right)',
           '2,000,000 = C_{1} \\times 10.8067',
@@ -408,7 +408,7 @@ export const ACT1_CONCEPTS: Concept[] = [
         where: ['PV: amount borrowed', 'T: number of payments'],
       },
       example: {
-        prompt: 'A $200,000, 20-year mortgage at 6%, paid annually at the end of each year. What is the payment? (BMA Ch2 P36a)',
+        prompt: 'A $200,000, 20-year mortgage at 6%, paid annually at the end of each year. What is the payment?',
         working: [
           '200,000 = \\frac{C}{0.06}\\left(1 - \\frac{1}{1.06^{20}}\\right) = C \\times 11.4699',
           'C = \\frac{200,000}{11.4699} = \\$17,436.91',
@@ -447,7 +447,7 @@ export const ACT1_CONCEPTS: Concept[] = [
         tex: 'B_{k} = \\frac{C}{r}\\left(1 - \\frac{1}{(1 + r)^{T - k}}\\right) \\qquad \\text{fraction repaid} = \\frac{PV - B_{k}}{PV}',
       },
       example: {
-        prompt: 'The $200,000, 20-year, 6% mortgage (payment $17,436.91). What fraction is repaid after 10 years? (BMA Ch2 P36c)',
+        prompt: 'The $200,000, 20-year, 6% mortgage (payment $17,436.91). What fraction is repaid after 10 years?',
         working: [
           'B_{10} = \\frac{17,436.91}{0.06}\\left(1 - \\frac{1}{1.06^{10}}\\right) = \\$128,337.19',
           '\\text{fraction} = \\frac{200,000 - 128,337.19}{200,000} = 35.8\\%',
@@ -472,7 +472,7 @@ export const ACT1_CONCEPTS: Concept[] = [
       ],
       formula: { tex: 'share_{k} = \\frac{r \\times B_{k-1}}{C}', where: ['B₀ = amount borrowed'] },
       example: {
-        prompt: 'The $200,000, 6% mortgage with payment $17,436.91. What fraction of the first payment is interest? And the last? (BMA Ch2 P36c)',
+        prompt: 'The $200,000, 6% mortgage with payment $17,436.91. What fraction of the first payment is interest? And the last?',
         working: [
           '\\text{first: } \\frac{0.06 \\times 200,000}{17,436.91} = \\frac{12,000}{17,436.91} = 68.8\\%',
           '\\text{last: } B_{19} = \\frac{17,436.91}{1.06} = 16,449.92 \\to \\frac{0.06 \\times 16,449.92}{17,436.91} = 5.7\\%',
@@ -507,7 +507,7 @@ export const ACT1_CONCEPTS: Concept[] = [
         where: ['m: number of compounding periods a year'],
       },
       example: {
-        prompt: 'A credit card quotes 12% APR, compounded monthly. What is the EAR? (Mock exam Q6)',
+        prompt: 'A credit card quotes 12% APR, compounded monthly. What is the EAR?',
         working: ['r_{EAR} = \\left(1 + \\frac{0.12}{12}\\right)^{12} - 1 = 1.01^{12} - 1', 'r_{EAR} = 12.68\\%'],
         answer: '12.68%',
       },

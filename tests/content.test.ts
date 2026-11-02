@@ -18,11 +18,13 @@ function checkInstance(id: string, inst: ProblemInstance) {
     for (const p of s.periods) expect(p >= 0 && p <= inst.timeline.show, `${id}: period ${p} on ruler`).toBe(true);
   }
   if (inst.timeline.valueAt) expect(inst.timeline.valueAt.period).toBeLessThanOrEqual(inst.timeline.show);
-  const text = [...inst.prompt, inst.ask, inst.answer.explain, inst.decision.explain, ...inst.working, inst.cfoLine].join(' ');
+  const text = [...inst.prompt.map((b) => (typeof b === 'string' ? b : b.text)), inst.ask, inst.answer.explain, inst.decision.explain, ...inst.working, inst.cfoLine].join(' ');
   expect(text, `${id}: no broken numbers`).not.toMatch(/NaN|undefined|Infinity/);
   // Every input value that appears in prose should be printed exactly as the solver uses it (spot-check: no two
   // inputs share a key, and the decision label set is unique).
   expect(new Set(inst.inputs.map((i) => i.key)).size).toBe(inst.inputs.length);
+  // Player-facing copy stays independent of the course: no lecture or textbook references.
+  expect(text, `${id}: no lecture references`).not.toMatch(/lecture|BMA|exam script/i);
 }
 
 describe('every calc problem is internally consistent', () => {
@@ -62,6 +64,11 @@ describe('story numbers', () => {
     expect(answerOf('loan-payment', { P: 300000, r: 5, T: 20, error: 0, ctx: 'flagship' })).toBeCloseTo(24072.78, 1));
   it('boss: first payment interest share = 62.31%', () =>
     expect(answerOf('interest-share', { P: 300000, r: 5, T: 20, k: 1, ctx: 'flagship' })).toBeCloseTo(62.31, 1));
+  it('2022 paper Q1(d): $1,516/month, 25y, 9% monthly, 25% deposit ≈ $240,864', () => {
+    const v = answerOf('house-mortgage');
+    expect(v).toBeGreaterThan(240000);
+    expect(v).toBeLessThan(241700);
+  });
   it('boss: fraction repaid after 10 = 38.08%', () =>
     expect(answerOf('loan-balance', { P: 300000, r: 5, T: 20, k: 10, ctx: 'flagship' })).toBeCloseTo(38.08, 1));
 });

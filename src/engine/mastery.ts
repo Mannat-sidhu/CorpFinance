@@ -9,7 +9,8 @@ const BASE_INTERVAL_DAYS = [2, 5, 12, 25];
 const SESSION_INTERVALS = [1, 2, 3, 5];
 const NEXT: Record<Stage, Stage> = { locked: 'new', new: 'practising', practising: 'common', common: 'common' };
 
-export type Mode = 'full' | 'practising' | 'auto';
+/** How much help a calculation round gives. It fades as an idea is learnt. */
+export type Help = 'guided' | 'prompted' | 'unguided';
 
 export const blankConcept = (): ConceptState => ({
   stage: 'locked',
@@ -27,11 +28,14 @@ export const conceptState = (save: SaveData, id: ConceptId) => save.mastery[id] 
 
 export const stageOf = (save: SaveData, id: ConceptId): Stage => conceptState(save, id).stage;
 
-export function modeFor(stage: Stage): Mode {
-  if (stage === 'practising') return 'practising';
-  if (stage === 'common') return 'auto';
-  return 'full';
+export function helpFor(stage: Stage): Help {
+  if (stage === 'practising') return 'prompted';
+  if (stage === 'common') return 'unguided';
+  return 'guided';
 }
+
+/** Boss levels fade by chapter: full help in I, less in II, none from III. */
+export const bossHelp = (act: number): Help => (act <= 1 ? 'guided' : act === 2 ? 'prompted' : 'unguided');
 
 /** Intervals shrink in proportion when the exam is closer than the full ladder (44 days). */
 export function intervalScale(examDate: string, now: number) {

@@ -20,7 +20,9 @@ interface Props {
 export function TimelineInput({ spec, value, onChange, reveal }: Props) {
   const [selected, setSelected] = useState(spec.streams[0]?.id ?? '');
   const [dragOver, setDragOver] = useState<number | null>(null);
-  const periods = Array.from({ length: spec.show + 1 }, (_, i) => i);
+  // Long rulers (e.g. 300 months) show the start and the end, with a gap in between.
+  const all = Array.from({ length: spec.show + 1 }, (_, i) => i);
+  const periods: (number | 'gap')[] = spec.show > 24 ? [...all.slice(0, 7), 'gap', ...all.slice(-4)] : all;
   const unit = UNIT_NAME[spec.unit];
   const short = UNIT_SHORT[spec.unit];
 
@@ -100,7 +102,15 @@ export function TimelineInput({ spec, value, onChange, reveal }: Props) {
       )}
 
       <div className="ruler" role="group" aria-label={`${unit}s`}>
-        {periods.map((p) => (
+        {periods.map((p) =>
+          p === 'gap' ? (
+            <div key="gap" className="tick gap" aria-hidden>
+              <span className="yr">⋯</span>
+              {spec.streams.some((s) => (value.placed[s.id] ?? []).some((x) => x > 6 && x < spec.show - 3)) && (
+                <span className="gap-note">filled</span>
+              )}
+            </div>
+          ) : (
           <button
             type="button"
             key={p}
@@ -134,7 +144,8 @@ export function TimelineInput({ spec, value, onChange, reveal }: Props) {
               return null;
             })}
           </button>
-        ))}
+          ),
+        )}
       </div>
       {spec.streams.some((s) => value.forever[s.id]) && <div className="forever-arrow">→ continues forever</div>}
 
@@ -154,6 +165,12 @@ export function TimelineInput({ spec, value, onChange, reveal }: Props) {
           <div className="q">{spec.valueAt.prompt}</div>
           <div className="ruler" role="radiogroup" aria-label={spec.valueAt.prompt}>
             {periods.map((p) => {
+              if (p === 'gap')
+                return (
+                  <div key="gap" className="tick gap" aria-hidden>
+                    <span className="yr">⋯</span>
+                  </div>
+                );
               const chosen = value.valueAt === p;
               const right = spec.valueAt!.period === p;
               return (
