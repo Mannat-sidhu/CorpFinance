@@ -175,6 +175,7 @@ export function ProblemRunner({
   onDone,
   intro,
   outcomeNote,
+  exam,
 }: {
   problem: CalcProblem;
   params: unknown;
@@ -184,6 +185,8 @@ export function ProblemRunner({
   intro?: ReactNode;
   /** Show the consequence for the house on the summary card. */
   outcomeNote?: boolean;
+  /** Paper conditions: plain prompt, and nothing is marked on screen. The caller gets the marks at hand-in. */
+  exam?: boolean;
 }) {
   const { openFormulas, openLesson } = useGame();
   const inst = useMemo(() => problem.build(params ?? problem.base), [problem, params]);
@@ -252,7 +255,10 @@ export function ProblemRunner({
 
   /** Unguided: everything is handed in at once and marked at the end, as on paper. */
   const handIn = () => {
-    setResults(Object.fromEntries(STEPS.map((k) => [k, mark(k)])));
+    const res = Object.fromEntries(STEPS.map((k) => [k, mark(k)]));
+    // On the paper nothing is shown: the marks go straight to the caller.
+    if (exam) return report(res);
+    setResults(res);
     setPhase('summary');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -267,10 +273,10 @@ export function ProblemRunner({
     requestAnimationFrame(() => document.getElementById('work-top')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   };
 
-  const slips = (): NewSlip[] => {
+  const slipsOf = (res: Partial<Record<StepKey, StepResult>>): NewSlip[] => {
     const base = { concept: problem.concept, problem: problem.id, title: problem.title };
     const out: NewSlip[] = [];
-    const lost = (k: StepKey) => !!results[k] && !results[k]!.correct && !results[k]!.ecf;
+    const lost = (k: StepKey) => !!res[k] && !res[k]!.correct && !res[k]!.ecf;
     if (lost('timeline')) out.push({ ...base, step: 'timeline', what: 'The cash flows weren’t placed on the right dates', fix: inst.timeline.explain });
     if (lost('formula'))
       out.push({
@@ -287,10 +293,11 @@ export function ProblemRunner({
     return out;
   };
 
-  const finish = () => {
-    const t = totals(results);
-    onDone({ clean: cleanRun(results), score: t.score, max: t.max, decision: decision!, instance: inst, results, slips: slips() });
+  const report = (res: Partial<Record<StepKey, StepResult>>) => {
+    const t = totals(res);
+    onDone({ clean: cleanRun(res), score: t.score, max: t.max, decision: decision!, instance: inst, results: res, slips: slipsOf(res) });
   };
+  const finish = () => report(results);
 
   const r = results[step];
   const showFeedback = phase === 'feedback' && r;
@@ -535,7 +542,7 @@ export function ProblemRunner({
         <span className="game-kind">{unguided ? 'On your own · show your working' : mode === 'prompted' ? 'Your move · one tip only' : 'Your move'}</span>
         <h2 id="problem-title">{problem.title}</h2>
       </div>
-      <Chat beats={inst.prompt} host={problem.host} />
+      <Chat beats={inst.prompt} host={problem.host} plain={exam} />
       <div className="ask-card">
         <span className="ask-tag">The question</span>
         {inst.ask}
@@ -550,7 +557,7 @@ export function ProblemRunner({
       <section aria-labelledby="problem-title">
         {head}
         <div className="panel script" id="work-top">
-          <p className="step-help">No tips and no ticks until you hand it in. Write it the way you would on paper.</p>
+          <p className="step-help">{exam ? 'Show your working. Nothing is marked until the whole paper is handed in.' : 'No tips and no ticks until you hand it in. Write it the way you would on paper.'}</p>
           {STEPS.map((k, i) => (
             <div className="script-part" key={k}>
               <h3 className="step-title">
@@ -565,7 +572,7 @@ export function ProblemRunner({
             </span>
             <span className="spacer" />
             <button type="button" className="btn" onClick={handIn} disabled={done < STEPS.length}>
-              Hand it in
+              {exam ? 'Next part' : 'Hand it in'}
             </button>
           </div>
         </div>

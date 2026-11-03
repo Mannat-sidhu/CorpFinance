@@ -361,4 +361,5 @@ Each question has its own answer and is graded by the same engine.
 - **Clinic:** up to three of the episode's shaky ideas, one fresh question on each (a different problem than the episode used where one exists), prompted help first and full help on a retry. After two failed tries there is "Carry on anyway", so nobody is stuck.
 - **Notebook:** `slips` in the save. Every round type reports its lost marks (calc by move, worksheet rows, match labels, table rows, written points, sorting items). The screen shows where marks go by step, with advice for the biggest, and a drill for the idea with the most open slips.
 - **Practice depth:** 18 new scenarios (perpetuities, growing and delayed perpetuities, PV/FV, loans, bonds, payout, two-stage, ARR, IRR, depreciation shield, salvage). Chapters V–X should ship with at least two scenarios per idea.
-- **Not built yet:** predict-before-reveal prompts, worked-example fading in lessons, mixed cross-chapter review sets, full exam mode.
+- **Exam mode (built):** see the README. Chapters V–X must add their own question to the blueprint in `content/paper.ts` (weights must still total 25 a question).
+- **Not built yet:** predict-before-reveal prompts, worked-example fading in lessons, mixed cross-chapter review sets.

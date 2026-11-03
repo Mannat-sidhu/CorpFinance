@@ -37,13 +37,23 @@ export function Bubble({
   );
 }
 
+/** Sentences that coach the player. They belong in the story, not on an exam paper. */
+const COACHING = /draw the timeline|never sign a loan|price it yourself|half right|mind which|you.ll see the problem|hunt for it|try the irr/i;
+
+/** Strips coaching sentences from a prompt line; empty if nothing is left. */
+export const paperText = (text: string) =>
+  text
+    .split(/(?<=[.!?])\s+/)
+    .filter((sent) => !COACHING.test(sent))
+    .join(' ');
+
 /** All lines at once (used for problem briefs and revision). */
-export function Chat({ beats, host }: { beats: (string | StoryBeat)[]; host?: CharacterId }) {
+export function Chat({ beats, host, plain }: { beats: (string | StoryBeat)[]; host?: CharacterId; plain?: boolean }) {
   return (
-    <div className={`chat${host === 'narrator' ? ' paper' : ''}`}>
-      {beats.map((b, i) => {
-        const beat = typeof b === 'string' ? { who: host ?? 'margaux', text: b } : b;
-        const prev = i > 0 ? beats[i - 1] : null;
+    <div className={`chat${host === 'narrator' || plain ? ' paper' : ''}`}>
+      {(plain ? beats.filter((b) => paperText(typeof b === 'string' ? b : b.text)) : beats).map((b, i, shown) => {
+        const beat: StoryBeat = plain ? { who: 'narrator', text: paperText(typeof b === 'string' ? b : b.text) } : typeof b === 'string' ? { who: host ?? 'margaux', text: b } : b;
+        const prev = i > 0 ? shown[i - 1] : null;
         const prevWho = prev === null ? null : typeof prev === 'string' ? (host ?? 'margaux') : prev.who;
         return <Bubble key={i} beat={beat} continued={prevWho === beat.who} />;
       })}

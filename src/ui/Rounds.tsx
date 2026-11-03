@@ -29,13 +29,21 @@ function Actions({ children }: { children: ReactNode }) {
   return <div className="step-actions">{children}</div>;
 }
 
-export function BriefRunner({ problem, seed, onDone, intro }: { problem: BriefProblem; seed: number; onDone: (r: RoundResult) => void; intro?: ReactNode }) {
+export function BriefRunner({ problem, seed, onDone, intro, exam }: { problem: BriefProblem; seed: number; onDone: (r: RoundResult) => void; intro?: ReactNode; exam?: boolean }) {
   const order = useMemo(() => shuffle(mulberry32(seed), problem.cards.map((_, i) => i)), [problem, seed]);
   const [chosen, setChosen] = useState<number[]>([]);
   const [checked, setChecked] = useState(false);
   const keys = problem.cards.filter((c) => c.kind === 'key').length;
   const result = markBrief(problem.cards, chosen);
   const toggle = (i: number) => !checked && setChosen((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]));
+  const complete = () => {
+    const base = { concept: problem.concept, problem: problem.id, title: problem.title, step: 'point' as const };
+    const slips: NewSlip[] = [
+      ...problem.cards.filter((c, i) => c.kind === 'key' && !chosen.includes(i)).map((c) => ({ ...base, what: `Missed a key point: ${c.text}`, fix: c.why })),
+      ...problem.cards.filter((c, i) => c.kind === 'trap' && chosen.includes(i)).map((c) => ({ ...base, what: `Used a wrong point: ${c.text}`, fix: c.why })),
+    ].slice(0, 4);
+    onDone({ score: result.score, max: result.max, clean: { [problem.concept]: result.clean }, slips });
+  };
 
   return (
     <section aria-labelledby="brief-title">
@@ -44,7 +52,7 @@ export function BriefRunner({ problem, seed, onDone, intro }: { problem: BriefPr
         <span className="game-kind">Brief the board</span>
         <h2 id="brief-title">{problem.title}</h2>
       </div>
-      <Chat beats={problem.prompt} host={problem.host} />
+      <Chat beats={problem.prompt} host={problem.host} plain={exam} />
       <div className="ask-card">
         <span className="ask-tag">Explain</span>
         {problem.question}
@@ -86,22 +94,15 @@ export function BriefRunner({ problem, seed, onDone, intro }: { problem: BriefPr
             </span>
           )}
           {!checked ? (
-            <button type="button" className="btn" disabled={!chosen.length} onClick={() => setChecked(true)}>
-              Submit my answer
+            <button type="button" className="btn" disabled={!chosen.length} onClick={exam ? complete : () => setChecked(true)}>
+              {exam ? 'Next part' : 'Submit my answer'}
             </button>
           ) : (
             <button
               type="button"
               className="btn"
               autoFocus
-              onClick={() => {
-                const base = { concept: problem.concept, problem: problem.id, title: problem.title, step: 'point' as const };
-                const slips: NewSlip[] = [
-                  ...problem.cards.filter((c, i) => c.kind === 'key' && !chosen.includes(i)).map((c) => ({ ...base, what: `Missed a key point: ${c.text}`, fix: c.why })),
-                  ...problem.cards.filter((c, i) => c.kind === 'trap' && chosen.includes(i)).map((c) => ({ ...base, what: `Used a wrong point: ${c.text}`, fix: c.why })),
-                ].slice(0, 4);
-                onDone({ score: result.score, max: result.max, clean: { [problem.concept]: result.clean }, slips });
-              }}
+              onClick={complete}
             >
               Continue →
             </button>
@@ -222,6 +223,8 @@ interface RoundRunnerProps {
   count?: number;
   intro?: ReactNode;
   outcomeNote?: boolean;
+  /** Paper conditions: plain prompts, nothing marked on screen. */
+  exam?: boolean;
   onDone: (r: RoundResult) => void;
 }
 
@@ -233,6 +236,7 @@ function Round({
   count,
   intro,
   outcomeNote,
+  exam,
   onDone,
 }: {
   problem: Problem;
@@ -242,6 +246,7 @@ function Round({
   count?: number;
   intro?: ReactNode;
   outcomeNote?: boolean;
+  exam?: boolean;
   onDone: (r: RoundResult) => void;
 }) {
   switch (problem.kind) {
@@ -254,13 +259,14 @@ function Round({
           seed={seed}
           intro={intro}
           outcomeNote={outcomeNote}
+          exam={exam}
           onDone={(r) => onDone({ score: r.score, max: r.max, clean: { [problem.concept]: r.clean }, calc: r, slips: r.slips })}
         />
       );
     case 'classify':
       return <ClassifyRunner problem={problem} seed={seed} count={count} intro={intro} onDone={(r) => onDone({ score: r.score, max: r.max, clean: r.clean, slips: r.slips })} />;
     case 'brief':
-      return <BriefRunner problem={problem} seed={seed} intro={intro} onDone={onDone} />;
+      return <BriefRunner problem={problem} seed={seed} intro={intro} exam={exam} onDone={onDone} />;
     case 'table':
       return <TableRunner problem={problem} intro={intro} onDone={onDone} />;
     case 'worksheet':

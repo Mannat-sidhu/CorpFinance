@@ -17,6 +17,7 @@ export type Screen =
   | { name: 'exam'; act: number }
   | { name: 'yearend'; act: number }
   | { name: 'notebook' }
+  | { name: 'paper' }
   | { name: 'clinic'; sessionId: string }
   | { name: 'practice'; concept: ConceptId }
   | { name: 'progress' }

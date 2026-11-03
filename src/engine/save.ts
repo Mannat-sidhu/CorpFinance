@@ -1,6 +1,7 @@
 // Save layer. The game talks only to the SaveStore interface, so a cloud store
 // (e.g. Supabase) can replace LocalSaveStore later without touching the rest.
 import type { HeldItem } from './holdings';
+import type { PaperAttempt, PaperRecord } from './paper';
 import type { Slip } from './slips';
 import type { ConceptId, Stage } from './types';
 
@@ -58,6 +59,10 @@ export interface SaveData {
   holdings: HeldItem[];
   /** The notebook: marks lost, and how to fix them. */
   slips: Slip[];
+  /** A mock paper being sat, if any. */
+  paper: PaperAttempt | null;
+  /** Mock papers finished. */
+  papers: PaperRecord[];
   /** Story years already settled at a year-end screen. */
   yearsClosed: number[];
   resume: {
@@ -132,6 +137,8 @@ export function freshSave(houseName = 'Atelier Noor', now = Date.now()): SaveDat
     exams: {},
     holdings: [CORE_TRADING],
     slips: [],
+    paper: null,
+    papers: [],
     yearsClosed: [],
     resume: null,
     mastery: {},

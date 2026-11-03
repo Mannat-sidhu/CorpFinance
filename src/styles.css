@@ -2759,3 +2759,84 @@ body {
   border-style: dashed;
   font-size: 22px;
 }
+
+/* ---------- mock exam ---------- */
+
+.paper-entry {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 28px;
+  padding: 18px 22px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+.paper-entry h2 {
+  margin: 2px 0 4px;
+  font-size: 22px;
+}
+.paper-entry p {
+  margin: 0;
+  max-width: 46em;
+  font-size: 14.5px;
+}
+.paper-rules {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+}
+.paper-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14.5px;
+}
+.paper-clock {
+  font-family: var(--serif);
+  font-size: 26px;
+  letter-spacing: 0.02em;
+}
+.paper-clock.low {
+  color: var(--bad);
+}
+.paper-foot {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rule);
+  font-size: 14px;
+}
+.paper-q {
+  margin-top: 14px;
+}
+.paper-q-title {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.paper-part {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  padding: 10px 14px;
+  margin-top: 8px;
+}
+.paper-part summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.paper-part[open] summary {
+  margin-bottom: 10px;
+}

@@ -9,6 +9,7 @@ import type { Act, Stage } from '../engine/types';
 import { Overlays, STAGE_LABEL } from './Overlays';
 import { BossPlayer, ExamPlayer, PracticePlayer, SessionPlayer } from './Play';
 import { ClinicPlayer } from './Clinic';
+import { ExamPaper } from './ExamPaper';
 import { Notebook } from './Notebook';
 import { YearEndScreen } from './YearEnd';
 import { Portrait } from './Portrait';
@@ -152,6 +153,21 @@ function ActMap() {
             {save.sessions[firstOpen.id] ? 'Clinic' : 'Play'}: {firstOpen.title} →
           </button>
         ) : null}
+      </section>
+
+      <section className="paper-entry">
+        <div>
+          <div className="eyebrow">Mock exam</div>
+          <h2>The paper</h2>
+          <p className="muted">
+            Four 25-mark questions in two hours, fresh numbers each time. No tips; marked only when you hand in.
+            {save.papers.length ? ` Best so far: ${Math.max(...save.papers.map((p) => p.total))} / 100.` : ''}
+            {save.paper ? ' A paper is in progress.' : ''}
+          </p>
+        </div>
+        <button type="button" className="btn" onClick={() => go({ name: 'paper' })}>
+          {save.paper ? 'Carry on with the paper' : 'Sit a mock paper'}
+        </button>
       </section>
 
       <div className="chapters">
@@ -510,6 +526,7 @@ export function App() {
         {screen.name === 'practice' && <PracticePlayer key={screen.concept} concept={screen.concept} />}
         {screen.name === 'progress' && <Progress />}
         {screen.name === 'notebook' && <Notebook />}
+        {screen.name === 'paper' && <ExamPaper />}
         {screen.name === 'clinic' && <ClinicPlayer sessionId={screen.sessionId} />}
         {screen.name === 'settings' && <Settings />}
       </main>
