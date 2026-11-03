@@ -18,6 +18,7 @@ import {
   type TimelineAnswer,
 } from '../engine/grading';
 import type { Help } from '../engine/mastery';
+import type { NewSlip } from '../engine/slips';
 import { mulberry32, shuffle } from '../engine/rng';
 import type { CalcProblem, ProblemInstance, Unit } from '../engine/types';
 import { Bubble, Chat } from './Chat';
@@ -35,6 +36,8 @@ export interface RunResult {
   decision: string;
   instance: ProblemInstance;
   results: Partial<Record<StepKey, StepResult>>;
+  /** Marks lost, for the notebook. */
+  slips: NewSlip[];
 }
 
 const STEP_NAMES: Record<StepKey, string> = {
@@ -264,9 +267,29 @@ export function ProblemRunner({
     requestAnimationFrame(() => document.getElementById('work-top')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   };
 
+  const slips = (): NewSlip[] => {
+    const base = { concept: problem.concept, problem: problem.id, title: problem.title };
+    const out: NewSlip[] = [];
+    const lost = (k: StepKey) => !!results[k] && !results[k]!.correct && !results[k]!.ecf;
+    if (lost('timeline')) out.push({ ...base, step: 'timeline', what: 'The cash flows weren’t placed on the right dates', fix: inst.timeline.explain });
+    if (lost('formula'))
+      out.push({
+        ...base,
+        step: 'formula',
+        what: `Chose “${formula ? METHODS[formula]?.name : 'nothing'}” where “${METHODS[inst.formula.correct].name}” was needed`,
+        fix: inst.formula.explain,
+      });
+    if (lost('inputs'))
+      for (const s of inst.inputs.filter((x) => !inputOk(x, parsedInputs[x.key])).slice(0, 3))
+        out.push({ ...base, step: 'inputs', what: `${s.label}: should be ${fmt(s.expected, s.unit)}`, fix: s.explain });
+    if (lost('answer')) out.push({ ...base, step: 'answer', what: `Answer should be ${fmt(expectedAnswer, inst.answer.unit, 2)}`, fix: inst.answer.explain });
+    if (lost('decision')) out.push({ ...base, step: 'decision', what: 'The call, or the reason for it, didn’t follow from the numbers', fix: inst.decision.explain });
+    return out;
+  };
+
   const finish = () => {
     const t = totals(results);
-    onDone({ clean: cleanRun(results), score: t.score, max: t.max, decision: decision!, instance: inst, results });
+    onDone({ clean: cleanRun(results), score: t.score, max: t.max, decision: decision!, instance: inst, results, slips: slips() });
   };
 
   const r = results[step];

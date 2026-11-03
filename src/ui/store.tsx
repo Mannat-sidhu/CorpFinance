@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { recordAttempt, recordSpotCheck, introduce } from '../engine/mastery';
 import { addHoldings, holdingsOf } from '../engine/holdings';
+import { addSlips, fixConcept, type NewSlip } from '../engine/slips';
 import { LocalSaveStore, freshSave, type SaveData, type SaveStore } from '../engine/save';
 import { seedHoldings } from '../content';
 import type { ConceptId, Outcome, Stage } from '../engine/types';
@@ -15,6 +16,8 @@ export type Screen =
   | { name: 'boss'; act: number }
   | { name: 'exam'; act: number }
   | { name: 'yearend'; act: number }
+  | { name: 'notebook' }
+  | { name: 'clinic'; sessionId: string }
   | { name: 'practice'; concept: ConceptId }
   | { name: 'progress' }
   | { name: 'settings' };
@@ -39,6 +42,8 @@ interface Game {
   openLedger: (open: boolean) => void;
   /** Apply a decision's consequence to value, cash, holdings and the news feed. `chapter` dates any holding. */
   applyOutcome: (o: Outcome, chapter?: number) => void;
+  /** Add marks lost to the notebook. */
+  logSlips: (slips: NewSlip[]) => void;
   /** Record a worked problem towards mastery; returns any promotion. */
   recordWork: (concept: ConceptId, clean: boolean, spotCheck: boolean) => Stage | null;
   meet: (concept: ConceptId) => void;
@@ -124,17 +129,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
     [setSave],
   );
 
+  const logSlips = useCallback(
+    (slips: NewSlip[]) => {
+      if (slips.length) setSave((s) => ({ ...s, slips: addSlips(s.slips, slips, Date.now()) }));
+    },
+    [setSave],
+  );
+
   const recordWork = useCallback(
     (concept: ConceptId, clean: boolean, spotCheck: boolean) => {
       // Apply through an updater so it composes with other pending changes (e.g. an outcome);
       // the returned stage change is read from the latest snapshot, for display only.
       const now = Date.now();
       const before = latest.current;
+      const tidy = (s: SaveData) => (clean ? { ...s, slips: fixConcept(s.slips, concept) } : s);
       if (spotCheck && before.mastery[concept]?.stage === 'common') {
-        setSave((s) => recordSpotCheck(s, concept, clean, now));
+        setSave((s) => tidy(recordSpotCheck(s, concept, clean, now)));
         return clean ? null : 'practising';
       }
-      setSave((s) => recordAttempt(s, concept, clean, now).save);
+      setSave((s) => tidy(recordAttempt(s, concept, clean, now).save));
       return recordAttempt(before, concept, clean, now).promotedTo;
     },
     [setSave],
@@ -154,6 +167,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     openFormulas: (open) => setOverlays((o) => ({ ...o, formulas: open })),
     openLedger: (open) => setOverlays((o) => ({ ...o, ledger: open })),
     applyOutcome,
+    logSlips,
     recordWork,
     meet,
   };

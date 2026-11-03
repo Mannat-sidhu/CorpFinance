@@ -5,6 +5,7 @@ import { eur, eurSigned, fmt, parseNumber } from '../engine/format';
 import { markMatch } from '../engine/grading';
 import { holdingsOf } from '../engine/holdings';
 import { mulberry32, shuffle } from '../engine/rng';
+import type { NewSlip } from '../engine/slips';
 import type { MatchProblem } from '../engine/types';
 import { Bubble, Chat } from './Chat';
 import type { RoundResult } from './Rounds';
@@ -37,11 +38,29 @@ export function MatchRunner({ problem, params, seed, intro, onDone }: { problem:
 
   const finish = () => {
     const o = pick!.outcome;
+    const base = { concept: problem.concept, problem: problem.id, title: problem.title };
+    const slips: NewSlip[] = [
+      ...computeIds
+        .filter((id) => !marks.computeOk[id])
+        .slice(0, 2)
+        .map((id) => ({
+          ...base,
+          step: 'answer' as const,
+          what: `${inst.compute!.label} for ${inst.options.find((x) => x.id === id)!.name} should be ${fmt(inst.compute!.values[id], inst.compute!.unit, 2)}`,
+          fix: inst.compute!.explain,
+        })),
+      ...inst.labels
+        .filter((l) => !marks.labelOk[l.id])
+        .slice(0, 2)
+        .map((l) => ({ ...base, step: 'label' as const, what: `“${l.text}” fits ${inst.options.find((x) => x.id === l.answer)!.name}`, fix: l.why })),
+      ...(marks.choiceOk ? [] : [{ ...base, step: 'decision' as const, what: 'The choice and its reason didn’t fit together', fix: 'Argue from what your option really is, and avoid options that destroy value.' }]),
+    ];
     onDone({
       score: marks.score,
       max: marks.max,
       clean: { [problem.concept]: marks.clean },
       outcome: o,
+      slips,
     });
   };
 

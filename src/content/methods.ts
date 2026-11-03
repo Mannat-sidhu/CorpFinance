@@ -119,6 +119,16 @@ export const METHODS: Record<string, Method> = {
     name: 'Incremental IRR: IRR of (big − small)',
     tex: '0 = \\Delta C_{0} + \\frac{\\Delta C_{1}}{1 + IRR} + \\frac{\\Delta C_{2}}{(1 + IRR)^{2}}',
   },
+  'dep-tax-shield': {
+    id: 'dep-tax-shield',
+    name: 'Depreciation tax shield: tax rate × depreciation, as an annuity',
+    tex: 'PV = t \\times D \\times \\frac{1}{r}\\left(1 - \\frac{1}{(1 + r)^{T}}\\right)',
+  },
+  'after-tax-salvage': {
+    id: 'after-tax-salvage',
+    name: 'After-tax salvage: sale price − tax on the gain',
+    tex: '\\text{After-tax salvage} = S - t \\times (S - BV)',
+  },
   pi: { id: 'pi', name: 'Profitability index: NPV per euro invested', tex: 'PI = \\frac{NPV}{\\text{investment}}' },
 };
 

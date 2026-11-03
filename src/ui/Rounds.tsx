@@ -2,11 +2,13 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { markBrief, markTable } from '../engine/grading';
 import { mulberry32, shuffle } from '../engine/rng';
+import type { NewSlip } from '../engine/slips';
 import type { BriefProblem, ConceptId, Outcome, Problem, TableProblem } from '../engine/types';
 import { Bubble, Chat } from './Chat';
 import { ClassifyRunner } from './Classify';
 import { ProblemRunner, type RunMode, type RunResult } from './ProblemRunner';
 import { MatchRunner } from './Match';
+import { useGame } from './store';
 import { WorksheetRunner } from './Worksheet';
 
 /** What every round reports back. */
@@ -19,6 +21,8 @@ export interface RoundResult {
   calc?: RunResult;
   /** Other rounds with a decision (the worksheet): its consequence for the house. */
   outcome?: Outcome;
+  /** Marks lost, for the notebook. */
+  slips?: NewSlip[];
 }
 
 function Actions({ children }: { children: ReactNode }) {
@@ -86,7 +90,19 @@ export function BriefRunner({ problem, seed, onDone, intro }: { problem: BriefPr
               Submit my answer
             </button>
           ) : (
-            <button type="button" className="btn" autoFocus onClick={() => onDone({ score: result.score, max: result.max, clean: { [problem.concept]: result.clean } })}>
+            <button
+              type="button"
+              className="btn"
+              autoFocus
+              onClick={() => {
+                const base = { concept: problem.concept, problem: problem.id, title: problem.title, step: 'point' as const };
+                const slips: NewSlip[] = [
+                  ...problem.cards.filter((c, i) => c.kind === 'key' && !chosen.includes(i)).map((c) => ({ ...base, what: `Missed a key point: ${c.text}`, fix: c.why })),
+                  ...problem.cards.filter((c, i) => c.kind === 'trap' && chosen.includes(i)).map((c) => ({ ...base, what: `Used a wrong point: ${c.text}`, fix: c.why })),
+                ].slice(0, 4);
+                onDone({ score: result.score, max: result.max, clean: { [problem.concept]: result.clean }, slips });
+              }}
+            >
               Continue →
             </button>
           )}
@@ -168,7 +184,19 @@ export function TableRunner({ problem, onDone, intro }: { problem: TableProblem;
               Check
             </button>
           ) : (
-            <button type="button" className="btn" autoFocus onClick={() => onDone({ score: result.score, max: result.max, clean: { [problem.concept]: result.clean } })}>
+            <button
+              type="button"
+              className="btn"
+              autoFocus
+              onClick={() => {
+                const slips: NewSlip[] = problem.rows
+                  .map((row, i) => ({ row, i }))
+                  .filter(({ row, i }) => row.answers.some((a, j) => given[i][j] !== a))
+                  .slice(0, 4)
+                  .map(({ row }) => ({ concept: problem.concept, problem: problem.id, title: problem.title, step: 'cell' as const, what: `Got ${row.label} wrong`, fix: row.why }));
+                onDone({ score: result.score, max: result.max, clean: { [problem.concept]: result.clean }, slips });
+              }}
+            >
               Continue →
             </button>
           )}
@@ -179,7 +207,25 @@ export function TableRunner({ problem, onDone, intro }: { problem: TableProblem;
 }
 
 /** Plays any kind of round. `count` limits sorting rounds (pop quizzes use 3). */
-export function RoundRunner({
+export function RoundRunner(props: RoundRunnerProps) {
+  const { logSlips } = useGame();
+  const { onDone } = props;
+  // Every round, wherever it's played, reports the marks it lost to the notebook.
+  return <Round {...props} onDone={(r) => { logSlips(r.slips ?? []); onDone(r); }} />;
+}
+
+interface RoundRunnerProps {
+  problem: Problem;
+  params?: unknown;
+  mode: RunMode;
+  seed: number;
+  count?: number;
+  intro?: ReactNode;
+  outcomeNote?: boolean;
+  onDone: (r: RoundResult) => void;
+}
+
+function Round({
   problem,
   params,
   mode,
@@ -208,11 +254,11 @@ export function RoundRunner({
           seed={seed}
           intro={intro}
           outcomeNote={outcomeNote}
-          onDone={(r) => onDone({ score: r.score, max: r.max, clean: { [problem.concept]: r.clean }, calc: r })}
+          onDone={(r) => onDone({ score: r.score, max: r.max, clean: { [problem.concept]: r.clean }, calc: r, slips: r.slips })}
         />
       );
     case 'classify':
-      return <ClassifyRunner problem={problem} seed={seed} count={count} intro={intro} onDone={(r) => onDone({ score: r.score, max: r.max, clean: r.clean })} />;
+      return <ClassifyRunner problem={problem} seed={seed} count={count} intro={intro} onDone={(r) => onDone({ score: r.score, max: r.max, clean: r.clean, slips: r.slips })} />;
     case 'brief':
       return <BriefRunner problem={problem} seed={seed} intro={intro} onDone={onDone} />;
     case 'table':

@@ -2698,3 +2698,64 @@ body {
 .chat.paper .caption:last-child {
   margin-bottom: 0;
 }
+
+/* ---------- notebook ---------- */
+
+.notebook-pattern,
+.notebook-concept {
+  margin-top: 28px;
+}
+.pattern-bars {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 18px;
+  max-width: 520px;
+}
+.pattern-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 32px;
+  gap: 12px;
+  align-items: center;
+  font-size: 14px;
+}
+.pattern-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--rule);
+  overflow: hidden;
+}
+.pattern-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.slip-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.slip-list li {
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  font-size: 14.5px;
+}
+.slip-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.slip-fix {
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: 13.5px;
+}
+.node.clinic .node-dot {
+  border-style: dashed;
+  font-size: 22px;
+}

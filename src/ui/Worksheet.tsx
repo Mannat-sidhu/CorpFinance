@@ -4,6 +4,7 @@ import * as fin from '../engine/finance';
 import { parseNumber } from '../engine/format';
 import { markWorksheet } from '../engine/grading';
 import type { Help } from '../engine/mastery';
+import type { NewSlip } from '../engine/slips';
 import { mulberry32, shuffle } from '../engine/rng';
 import type { ConceptId, WorksheetProblem } from '../engine/types';
 import { Bubble, Chat } from './Chat';
@@ -70,7 +71,12 @@ export function WorksheetRunner({
       clean[c] = (clean[c] ?? true) && !!marks.result[r.key]?.rowOk && !hinted[r.key];
     }
     clean[problem.concept] = (clean[problem.concept] ?? true) && npvOk && decPoints === 2;
-    onDone({ score: total, max, clean, outcome: choice ? inst.outcomes[choice] : undefined });
+    const slips: NewSlip[] = fillRows
+      .filter((r) => !marks.result[r.key]?.rowOk)
+      .slice(0, 4)
+      .map((r) => ({ concept: r.concept ?? problem.concept, problem: problem.id, title: problem.title, step: 'row' as const, what: `${r.label} row was wrong`, fix: r.explain }));
+    if (!npvOk && !npvEcf) slips.push({ concept: problem.concept, problem: problem.id, title: problem.title, step: 'answer', what: `NPV should be ${show(trueNpv)} ${inst.unitLabel}`, fix: inst.decision.explain });
+    onDone({ score: total, max, clean, outcome: choice ? inst.outcomes[choice] : undefined, slips });
   };
 
   return (

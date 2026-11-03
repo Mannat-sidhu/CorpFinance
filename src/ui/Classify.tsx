@@ -1,6 +1,7 @@
 // Sorting exercise for conceptual topics (assets, decisions, agency).
 import { useMemo, useState, type ReactNode } from 'react';
 import { mulberry32, shuffle } from '../engine/rng';
+import type { NewSlip } from '../engine/slips';
 import type { ClassifyProblem, ConceptId } from '../engine/types';
 import { Bubble, Chat } from './Chat';
 
@@ -9,6 +10,7 @@ export interface ClassifyResult {
   max: number;
   /** Per concept: were all its items right? */
   clean: Record<ConceptId, boolean>;
+  slips: NewSlip[];
 }
 
 export function ClassifyRunner({
@@ -35,7 +37,19 @@ export function ClassifyRunner({
       const c = it.concept ?? problem.concept;
       clean[c] = (clean[c] ?? true) && answers[i] === it.category;
     });
-    onDone({ score, max: items.length, clean });
+    const slips: NewSlip[] = items
+      .map((it, i) => ({ it, i }))
+      .filter(({ it, i }) => answers[i] !== it.category)
+      .slice(0, 4)
+      .map(({ it }) => ({
+        concept: it.concept ?? problem.concept,
+        problem: problem.id,
+        title: problem.title,
+        step: 'item' as const,
+        what: `“${it.text}” belongs under ${problem.categories.find((c) => c.id === it.category)?.label ?? it.category}`,
+        fix: it.why,
+      }));
+    onDone({ score, max: items.length, clean, slips });
   };
 
   return (

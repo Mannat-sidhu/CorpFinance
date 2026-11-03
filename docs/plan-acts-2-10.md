@@ -354,3 +354,11 @@ Each question has its own answer and is graded by the same engine.
 - **F2:** the house now has a base holding, its own trading profit (€60,000 a year, growing 3%, ±15%), so commitments like salaries don't drain cash with nothing coming in. Holdings exist for: laser cutter, design prize (if declined), both royalties (if kept), the studio rent, Bríd's pay, the bank loan, the bond's coupons and principal, the scarves, the restoration lease, the buttons, and every match-and-choose pick. The handbag line (€m scale) stays value-only. A year-end node follows each boss; years close in order.
 - **F3:** the four rounds are *Four ways to spend* (I), *Where to park the cash* (II), *Paying for the next step* (III) and *This year's budget* (IV, after the PI practice round). Unaffordable picks are allowed, with a warning that Aoife will cover the gap at a penalty rate. Ownership after selling a stake is not tracked yet; Chapter X will need it.
 - **F4:** 9 questions: I × 3, II × 2, III × 2, IV × 2. First completion adds up to €2,000 a question to house value, in proportion to the marks.
+
+## 8. Learning loop (built, 3 November 2026)
+
+- **Gating:** an episode is cleared at 70% of its marks, or by passing Margaux's clinic. Old saves count as cleared.
+- **Clinic:** up to three of the episode's shaky ideas, one fresh question on each (a different problem than the episode used where one exists), prompted help first and full help on a retry. After two failed tries there is "Carry on anyway", so nobody is stuck.
+- **Notebook:** `slips` in the save. Every round type reports its lost marks (calc by move, worksheet rows, match labels, table rows, written points, sorting items). The screen shows where marks go by step, with advice for the biggest, and a drill for the idea with the most open slips.
+- **Practice depth:** 18 new scenarios (perpetuities, growing and delayed perpetuities, PV/FV, loans, bonds, payout, two-stage, ARR, IRR, depreciation shield, salvage). Chapters V–X should ship with at least two scenarios per idea.
+- **Not built yet:** predict-before-reveal prompts, worked-example fading in lessons, mixed cross-chapter review sets, full exam mode.

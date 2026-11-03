@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ACTS, CONCEPTS, PRACTISABLE, PROBLEMS, findSession, isCalc, problemsFor } from '../content';
 import { eur, eurSigned } from '../engine/format';
 import { STEPS } from '../engine/grading';
+import { CLEAR_AT } from '../engine/save';
 import { bossHelp, helpFor, pickSpotCheck, stageOf } from '../engine/mastery';
 import { mulberry32, newSeed, pickOne } from '../engine/rng';
 import type { CalcProblem, ConceptId, Problem, Stage } from '../engine/types';
@@ -245,6 +246,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
   const resume = save.resume?.sessionId === sessionId ? save.resume : null;
   const [part, setPart] = useState(resume?.part ?? 0);
   const [done, setDone] = useState<Record<number, { score: number; max: number }>>(resume?.done ?? {});
+  const [weak, setWeak] = useState<ConceptId[]>(resume?.weak ?? []);
   const [cameBack, setCameBack] = useState(false);
   const [startValue] = useState(resume?.startValue ?? save.value);
   const [seed] = useState(newSeed);
@@ -256,8 +258,13 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
   const max = Object.values(done).reduce((s, d) => s + d.max, 0);
 
   useEffect(() => {
-    if (!finished) setSave((s) => ({ ...s, resume: { sessionId, part, score, max, startValue, done } }));
-  }, [part, done, finished, sessionId, startValue, setSave, score, max]);
+    if (!finished) setSave((s) => ({ ...s, resume: { sessionId, part, score, max, startValue, weak, done } }));
+  }, [part, done, finished, sessionId, startValue, setSave, score, max, weak]);
+
+  const ratio = max === 0 ? 1 : score / max;
+  const prior = save.sessions[sessionId];
+  // A replay never locks a cleared episode again; a first play clears at 70%.
+  const cleared = prior ? prior.cleared !== false : ratio >= CLEAR_AT;
 
   const recorded = useRef(false);
   useEffect(() => {
@@ -268,10 +275,10 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
         ...s,
         resume: null,
         sessionsPlayed: s.sessionsPlayed + 1,
-        sessions: { ...s.sessions, [sessionId]: { at: Date.now(), score, max } },
+        sessions: { ...s.sessions, [sessionId]: { at: Date.now(), score, max, cleared, weak: cleared ? undefined : weak } },
       }),
     );
-  }, [finished, score, max, sessionId, setSave]);
+  }, [finished, score, max, sessionId, setSave, cleared, weak]);
 
   const forward = (result?: { score: number; max: number }) => {
     if (result) setDone((d) => ({ ...d, [part]: result }));
@@ -318,7 +325,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
         <div className="play-main">
           {head}
           <section className="finale">
-            <div className="eyebrow">Episode cleared</div>
+            <div className="eyebrow">{cleared ? 'Episode cleared' : 'Episode played'}</div>
             <div className="finale-stars">
               <Stars n={stars} />
             </div>
@@ -343,12 +350,25 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
             {promos.map((p, i) => (
               <Promotion key={i} concept={p.concept} to={p.to} />
             ))}
+            {!cleared && (
+              <Bubble
+                beat={{
+                  who: 'margaux',
+                  mood: 'worried',
+                  text: `${score} of ${max}. That’s under ${Math.round(CLEAR_AT * 100)}%, and I’d rather you were sure than quick. ${
+                    weak.length ? `Shaky: ${weak.slice(0, 3).map((c) => CONCEPTS[c]?.name.toLowerCase()).join(', ')}. ` : ''
+                  }A short clinic, then you’re on to the next episode.`,
+                }}
+              />
+            )}
             <Bubble
               beat={{
                 who: 'margaux',
                 mood: stars === 3 ? 'happy' : 'neutral',
                 text:
-                  stars === 3
+                  !cleared
+                    ? 'The clinic is a few fresh questions on exactly those ideas, with a little less help each time you get one right.'
+                    : stars === 3
                     ? 'Not bad at all. Come back tomorrow and do a couple from the ledger. Ideas level up when you get them right on two different days.'
                     : 'Decent. Practise the shaky ones from the ledger tomorrow. Ideas level up when you get them right on two different days.',
               }}
@@ -358,7 +378,11 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
                 Back to the map
               </button>
               <span />
-              {nextSession ? (
+              {!cleared ? (
+                <button type="button" className="btn" onClick={() => go({ name: 'clinic', sessionId })} autoFocus>
+                  Start the clinic →
+                </button>
+              ) : nextSession ? (
                 <button type="button" className="btn" onClick={() => go({ name: 'play', sessionId: nextSession.id })}>
                   Next: {nextSession.title} →
                 </button>
@@ -416,6 +440,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
             const o = r.calc?.instance.outcomes[r.calc.decision] ?? r.outcome;
             if (!replay && o) applyOutcome(o, act.number);
             for (const [c, clean] of Object.entries(r.clean)) notePromo(c, recordWork(c, clean, false));
+            setWeak((w) => [...new Set([...w, ...Object.entries(r.clean).filter(([, clean]) => !clean).map(([c]) => c)])]);
             forward({ score: r.score, max: r.max });
           }}
         />

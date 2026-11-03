@@ -1,6 +1,7 @@
 // Save layer. The game talks only to the SaveStore interface, so a cloud store
 // (e.g. Supabase) can replace LocalSaveStore later without touching the rest.
 import type { HeldItem } from './holdings';
+import type { Slip } from './slips';
 import type { ConceptId, Stage } from './types';
 
 export interface ConceptState {
@@ -22,7 +23,17 @@ export interface SessionRecord {
   at: number;
   score: number;
   max: number;
+  /** False until the learner has shown they grasped the episode (about 70%, or the clinic). Missing means cleared. */
+  cleared?: boolean;
+  /** Ideas that weren't answered cleanly in the episode: what the clinic works on. */
+  weak?: ConceptId[];
 }
+
+/** An episode counts as done for unlocking only once it is cleared. */
+export const isCleared = (rec: SessionRecord | undefined): boolean => !!rec && rec.cleared !== false;
+
+/** Share of marks needed to clear an episode without the clinic. */
+export const CLEAR_AT = 0.7;
 
 export interface NewsItem {
   at: number;
@@ -45,6 +56,8 @@ export interface SaveData {
   exams: Record<number, SessionRecord>;
   /** Decisions still paying or costing cash. */
   holdings: HeldItem[];
+  /** The notebook: marks lost, and how to fix them. */
+  slips: Slip[];
   /** Story years already settled at a year-end screen. */
   yearsClosed: number[];
   resume: {
@@ -53,6 +66,8 @@ export interface SaveData {
     score: number;
     max: number;
     startValue: number;
+    /** Ideas missed so far this sitting. */
+    weak?: ConceptId[];
     /** Parts already finished, with their points, so going back never re-marks them. */
     done?: Record<number, { score: number; max: number }>;
   } | null;
@@ -116,6 +131,7 @@ export function freshSave(houseName = 'Atelier Noor', now = Date.now()): SaveDat
     bosses: {},
     exams: {},
     holdings: [CORE_TRADING],
+    slips: [],
     yearsClosed: [],
     resume: null,
     mastery: {},

@@ -3,10 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { ACTS, ALL_CONCEPT_IDS, CHARACTERS, CONCEPTS, findSession, seedHoldings } from '../content';
 import { eur, eurSigned } from '../engine/format';
 import { conceptState, intervalScale, isDue, stageOf, weakest } from '../engine/mastery';
-import { STARTING_VALUE, exportSave, freshSave, importSave } from '../engine/save';
+import type { SessionRecord } from '../engine/save';
+import { STARTING_VALUE, exportSave, freshSave, importSave, isCleared } from '../engine/save';
 import type { Act, Stage } from '../engine/types';
 import { Overlays, STAGE_LABEL } from './Overlays';
 import { BossPlayer, ExamPlayer, PracticePlayer, SessionPlayer } from './Play';
+import { ClinicPlayer } from './Clinic';
+import { Notebook } from './Notebook';
 import { YearEndScreen } from './YearEnd';
 import { Portrait } from './Portrait';
 import { Stars, starsFor } from './Stars';
@@ -82,6 +85,7 @@ function TopBar() {
             Ledger
           </button>
           {navItem('Progress', { name: 'progress' }, screen.name === 'progress')}
+          {navItem('Notebook', { name: 'notebook' }, screen.name === 'notebook')}
           {navItem('Settings', { name: 'settings' }, screen.name === 'settings')}
         </nav>
       </div>
@@ -106,7 +110,7 @@ function TopBar() {
 // ---------------------------------------------------------------- act map
 
 function actProgress(act: Act, sessions: Record<string, unknown>) {
-  const done = act.sessions.filter((s) => sessions[s.id]).length;
+  const done = act.sessions.filter((s) => isCleared(sessions[s.id] as SessionRecord | undefined)).length;
   return { done, total: act.sessions.length };
 }
 
@@ -133,7 +137,7 @@ function ActMap() {
   const resume = save.resume ? findSession(save.resume.sessionId) : null;
   const firstOpen = ACTS.filter((a) => !a.draft)
     .flatMap((a) => a.sessions)
-    .find((s) => !save.sessions[s.id]);
+    .find((s) => !isCleared(save.sessions[s.id]));
   return (
     <>
       <section className="hero">
@@ -144,8 +148,8 @@ function ActMap() {
             Carry on: {resume.session.title} →
           </button>
         ) : firstOpen ? (
-          <button type="button" className="btn big" onClick={() => go({ name: 'play', sessionId: firstOpen.id })}>
-            Play: {firstOpen.title} →
+          <button type="button" className="btn big" onClick={() => go(save.sessions[firstOpen.id] ? { name: 'clinic', sessionId: firstOpen.id } : { name: 'play', sessionId: firstOpen.id })}>
+            {save.sessions[firstOpen.id] ? 'Clinic' : 'Play'}: {firstOpen.title} →
           </button>
         ) : null}
       </section>
@@ -182,22 +186,23 @@ function ActMap() {
                 {act.sessions.map((s, i) => {
                   const rec = save.sessions[s.id];
                   const prevAct = ACTS[act.number - 2];
-                  const chapterOpen = !prevAct || prevAct.draft || prevAct.sessions.every((x) => save.sessions[x.id]);
-                  const unlocked = (i === 0 ? chapterOpen : !!save.sessions[act.sessions[i - 1].id]) || !!rec;
-                  const current = unlocked && !rec;
+                  const chapterOpen = !prevAct || prevAct.draft || prevAct.sessions.every((x) => isCleared(save.sessions[x.id]));
+                  const unlocked = (i === 0 ? chapterOpen : isCleared(save.sessions[act.sessions[i - 1].id])) || !!rec;
+                  const needsClinic = !!rec && !isCleared(rec);
+                  const current = (unlocked && !rec) || needsClinic;
                   return (
-                    <li key={s.id} className={`node${rec ? ' done' : ''}${current ? ' current' : ''}${!unlocked ? ' locked' : ''}`}>
+                    <li key={s.id} className={`node${rec && !needsClinic ? ' done' : ''}${current ? ' current' : ''}${!unlocked ? ' locked' : ''}${needsClinic ? ' clinic' : ''}`}>
                       <button
                         type="button"
                         className="node-dot"
                         disabled={!unlocked}
-                        onClick={() => go({ name: 'play', sessionId: s.id })}
-                        aria-label={`${rec ? 'Replay' : 'Play'} episode ${i + 1}: ${s.title}`}
+                        onClick={() => go(needsClinic ? { name: 'clinic', sessionId: s.id } : { name: 'play', sessionId: s.id })}
+                        aria-label={needsClinic ? `Clinic for episode ${i + 1}: ${s.title}` : `${rec ? 'Replay' : 'Play'} episode ${i + 1}: ${s.title}`}
                       >
-                        {rec ? '✓' : unlocked ? i + 1 : '🔒'}
+                        {needsClinic ? '+' : rec ? '✓' : unlocked ? i + 1 : '🔒'}
                       </button>
                       <div className="node-title">{s.title}</div>
-                      <div className="node-sub">{rec ? <Stars n={starsFor(rec.score, rec.max)} /> : s.blurb}</div>
+                      <div className="node-sub">{needsClinic ? 'Margaux wants a word.' : rec ? <Stars n={starsFor(rec.score, rec.max)} /> : s.blurb}</div>
                     </li>
                   );
                 })}
@@ -504,6 +509,8 @@ export function App() {
         {screen.name === 'yearend' && <YearEndScreen year={screen.act} />}
         {screen.name === 'practice' && <PracticePlayer key={screen.concept} concept={screen.concept} />}
         {screen.name === 'progress' && <Progress />}
+        {screen.name === 'notebook' && <Notebook />}
+        {screen.name === 'clinic' && <ClinicPlayer sessionId={screen.sessionId} />}
         {screen.name === 'settings' && <Settings />}
       </main>
       <Overlays />
