@@ -4,6 +4,7 @@ import { ACT_1 } from './act-1';
 import { ACT_2 } from './act-2';
 import { ACT_3 } from './act-3';
 import { ACT_4 } from './act-4';
+import { ACT_5 } from './act-5';
 import { EXAM_ROOMS } from './exam-rooms';
 
 const draft = (number: number, numeral: string, title: string, lecture: string, chapters: string, blurb: string): Act => ({
@@ -19,8 +20,7 @@ const draft = (number: number, numeral: string, title: string, lecture: string, 
 });
 
 export const ACTS: Act[] = [
-  ...[ACT_1, ACT_2, ACT_3, ACT_4].map((a) => ({ ...a, exam: EXAM_ROOMS[a.number] })),
-  draft(5, 'V', 'What investors want', 'Lectures 6–7', 'BMA Ch7–8', 'The house builds an investment portfolio.'),
+  ...[ACT_1, ACT_2, ACT_3, ACT_4, ACT_5].map((a) => ({ ...a, exam: EXAM_ROOMS[a.number] })),
   draft(6, 'VI', 'Debt or equity', 'Lecture 8', 'BMA Ch16–17', 'How much to borrow, and what it does to risk.'),
   draft(7, 'VII', 'The hurdle rate', 'Lecture 9', 'BMA Ch9', 'A risky streetwear line, judged at the wrong rate.'),
   draft(8, 'VIII', 'Valuing the maison', 'Lecture 10', 'BMA Ch18', 'The house is valued two ways.'),

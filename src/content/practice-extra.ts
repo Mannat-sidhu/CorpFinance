@@ -8,7 +8,7 @@ import { dec, defineCalc, onePlus, range, rd, roundTo, w0, w2 } from './helpers'
 
 const word = (n: number) => ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] ?? String(n);
 
-interface Scenario {
+export interface Scenario {
   prompt: (string | StoryBeat)[];
   ask: string;
   timeline: TimelineSpec;
@@ -26,7 +26,7 @@ interface Scenario {
 }
 
 /** Turns a compact scenario into a full five-move problem instance. */
-function scenario(s: Scenario): ProblemInstance {
+export function scenario(s: Scenario): ProblemInstance {
   return {
     prompt: s.prompt,
     ask: s.ask,

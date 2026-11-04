@@ -740,6 +740,131 @@ export const examIncremental = defineCalc({
   },
 });
 
+
+// ---------------------------------------------------------------- Chapter V
+
+export const examBetaCapm = defineCalc({
+  kind: 'calc',
+  id: 'exam-beta-capm',
+  title: 'Is the holding company worth it?',
+  host: 'narrator',
+  concept: 'capm',
+  uses: ['beta', 'covariance'],
+  base: { m: [8, -4, 12, 3, -2], s: [12, -8, 19, 3, -3], b: 1.4, rf: 3, rm: 9, expected: 12 },
+  vary: (rng) => {
+    const m = range(1, 5).map(() => pickInt(rng, -8, 18));
+    const b = pickRate(rng, 0.6, 1.8, 0.1);
+    const rf = pickRate(rng, 2, 5, 0.5);
+    const rm = rf + pickRate(rng, 4, 8, 0.5);
+    const noise = [1, -2, 2, -1, 0];
+    const s = m.map((x, i) => Math.round(b * x + noise[i]));
+    const beta = fin.beta(s, m);
+    return { m, s, b, rf, rm, expected: Math.round((fin.capm(rf, beta, rm) + pickOne(rng, [-1.5, -0.7, 0.7, 1.5])) * 10) / 10 };
+  },
+  build: ({ m, s, rf, rm, expected }) => {
+    const stock: number[] = s;
+    const cov = fin.covariance(stock, m);
+    const varM = fin.variance(m);
+    const beta = cov / varM;
+    const req = fin.capm(rf, beta, rm);
+    const buy = expected > req;
+    return {
+      prompt: [
+        `A holding company’s shares returned ${stock.map((x) => (x < 0 ? '−' : '') + Math.abs(x) + '%').join(', ')} over five years, while the market returned ${m.map((x: number) => (x < 0 ? '−' : '') + Math.abs(x) + '%').join(', ')} in the same years.`,
+        `Treasury bills pay ${pct(rf)} and the market is expected to return ${pct(rm)}. The holding company’s shares are expected to return ${pct(expected)}. Its dividend yield is 2.5% and it has 40 million shares in issue.`,
+      ],
+      ask: 'Estimate the holding company’s beta from the five years of data, and the return CAPM requires of it. Should the house buy?',
+      timeline: { unit: 'year', show: 6, streams: [{ id: 'ret', label: 'Returns on the stock and the market', periods: range(1, 5), direction: 'in' }], explain: 'One pair of returns for each of the five years.' },
+      formula: { options: ['capm', 'beta', 'capm-beta', 'correlation'], correct: 'capm', accept: [], explain: 'Beta (covariance ÷ market variance) feeds into CAPM: required return = risk-free + beta × (market − risk-free).' },
+      inputs: [
+        { key: 'c', symbol: '\\text{Cov}(R_{i},R_{m})', label: 'Covariance of the stock with the market', unit: 'number', expected: cov, explain: 'Average of the products of the two deviations.' },
+        { key: 'v', symbol: '\\text{Var}(R_{m})', label: 'Variance of the market', unit: 'number', expected: varM, explain: 'Average squared deviation of the market’s returns.' },
+        { key: 'rf', symbol: 'R_{f}', label: 'Risk-free rate', unit: 'pct', expected: rf, explain: `${pct(rf)}.` },
+        { key: 'rm', symbol: 'R_{m}', label: 'Expected market return', unit: 'pct', expected: rm, explain: 'Not the past five years’ average.' },
+      ],
+      solve: (v) => v.rf + (v.c / v.v) * (v.rm - v.rf),
+      answer: { label: 'Required return', unit: 'pct', explain: `β = ${w2(cov)} ÷ ${w2(varM)} = ${w2(beta)}; required return ${pct(req, 2)}.`, tolerance: 0.1 },
+      decision: {
+        question: `Buy at an expected return of ${pct(expected)}?`,
+        options: [
+          { id: 'yes', label: 'Buy' },
+          { id: 'no', label: 'Pass' },
+        ],
+        correct: buy ? 'yes' : 'no',
+        why: [
+          { id: 'above', label: 'The expected return is above the return required for its beta' },
+          { id: 'below', label: 'The expected return is below the return required for its beta' },
+          { id: 'div', label: 'The dividend yield makes it safe' },
+        ],
+        correctWhy: buy ? 'above' : 'below',
+        explain: `Expected ${pct(expected)} against required ${pct(req, 2)}.`,
+      },
+      working: [`\\beta = \\frac{${w2(cov)}}{${w2(varM)}} = ${w2(beta)}`, `E[R] = ${rf} + ${w2(beta)}(${rm} - ${rf}) = ${w2(req)}\\%`],
+      hints: { timeline: '', formula: '', inputs: '', answer: '', decision: '' },
+      outcomes: none(['yes', 'no'], 'Exam room question.'),
+      cfoLine: `β ${w2(beta)}, required ${pct(req, 2)}.`,
+    };
+  },
+});
+
+export const examTargetMix = defineCalc({
+  kind: 'calc',
+  id: 'exam-target-mix',
+  title: 'Risk budget',
+  host: 'narrator',
+  concept: 'capital-allocation',
+  uses: ['capm', 'portfolio-risk'],
+  base: { rf: 3, rm: 11, sm: 16, target: 9, need: 8 },
+  vary: (rng) => {
+    const rf = pickRate(rng, 2, 5, 0.5);
+    const rm = rf + pickRate(rng, 5, 9, 0.5);
+    const sm = pickInt(rng, 12, 22);
+    const target = pickInt(rng, 5, 24);
+    const e = rf + (target / sm) * (rm - rf);
+    return { rf, rm, sm, target, need: Math.round(e + pickOne(rng, [-1.5, -0.6, 0.6, 1.5])) };
+  },
+  build: ({ rf, rm, sm, target, need }) => {
+    const w = (target / sm) * 100;
+    const e = rf + (w / 100) * (rm - rf);
+    const ok = e >= need;
+    return {
+      prompt: [
+        `A family trust may invest only in the market portfolio and in Treasury bills, and it can lend or borrow at the bill rate. The market portfolio is expected to return ${pct(rm)} with a standard deviation of ${pct(sm)}. Bills pay ${pct(rf)}.`,
+        `The trustees will accept a portfolio standard deviation of at most ${pct(target)} and want an expected return of at least ${pct(need)}. The trust holds €2.4 million and its previous manager charged 0.6% a year.`,
+      ],
+      ask: 'What proportion should be in the market portfolio to use the whole risk budget, and what expected return does that give? Is the target met?',
+      timeline: { unit: 'year', show: 2, streams: [{ id: 'out', label: 'Trust money', periods: [0], direction: 'out' }, { id: 'back', label: 'Value after a year', periods: [1], direction: 'in' }], explain: 'One year.' },
+      formula: { options: ['mix-sd', 'mix-return', 'portfolio-sd', 'capm'], correct: 'mix-sd', accept: ['mix-return'], explain: 'The risk-free asset has no risk, so the weight in the market is target SD ÷ market SD. Then the return is the bill rate plus the weight times the market premium.' },
+      inputs: [
+        { key: 'w', symbol: 'w_{m}', label: 'Proportion in the market portfolio', unit: 'pct', expected: w, explain: `${pct(target)} ÷ ${pct(sm)} = ${pct(w, 1)}.` },
+        { key: 'rf', symbol: 'R_{f}', label: 'Risk-free rate', unit: 'pct', expected: rf, explain: `${pct(rf)}.` },
+        { key: 'rm', symbol: 'R_{m}', label: 'Market return', unit: 'pct', expected: rm, explain: `${pct(rm)}.` },
+      ],
+      solve: (v) => v.rf + (v.w / 100) * (v.rm - v.rf),
+      answer: { label: 'Expected return of the portfolio', unit: 'pct', explain: `${pct(rf)} + ${w2(w / 100)} × (${pct(rm)} − ${pct(rf)}) = ${pct(e, 2)}.`, tolerance: 0.1 },
+      decision: {
+        question: `Is the target of ${pct(need)} met within the risk limit?`,
+        options: [
+          { id: 'yes', label: 'Yes' },
+          { id: 'no', label: 'No: it can’t be done within that risk' },
+        ],
+        correct: ok ? 'yes' : 'no',
+        why: [
+          { id: 'ge', label: 'The best return available at that risk is at least the target' },
+          { id: 'lt', label: 'The best return available at that risk is below the target' },
+          { id: 'fee', label: 'The previous manager’s fee decides it' },
+        ],
+        correctWhy: ok ? 'ge' : 'lt',
+        explain: `${pct(e, 2)} is the best available at SD ${pct(target)}; the target is ${pct(need)}.`,
+      },
+      working: [`w_{m} = \\frac{${target}}{${sm}} = ${w4(target / sm)}`, `E[R] = ${rf} + ${w4(target / sm)}(${rm} - ${rf}) = ${w2(e)}\\%`],
+      hints: { timeline: '', formula: '', inputs: '', answer: '', decision: '' },
+      outcomes: none(['yes', 'no'], 'Exam room question.'),
+      cfoLine: `Best return at SD ${pct(target)}: ${pct(e, 2)}.`,
+    };
+  },
+});
+
 export const EXAM_PROBLEMS: Problem[] = [
   examDeferredLicence,
   examGrowingLater,
@@ -750,6 +875,8 @@ export const EXAM_PROBLEMS: Problem[] = [
   examRealGrowthDdm,
   examHiddenCosts,
   examIncremental,
+  examBetaCapm,
+  examTargetMix,
 ];
 
 const room = (ids: string[]): ExamRoom => ({
@@ -762,4 +889,5 @@ export const EXAM_ROOMS: Record<number, ExamRoom> = {
   2: room(['exam-bond-two-years', 'exam-ytm-real']),
   3: room(['exam-pvgo-roe', 'exam-real-growth-ddm']),
   4: room(['exam-hidden-costs', 'exam-incremental']),
+  5: room(['exam-beta-capm', 'exam-target-mix']),
 };

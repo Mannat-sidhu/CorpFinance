@@ -1,6 +1,6 @@
 # Atelier Noor: plan for Chapters II–X
 
-Status: **agreed 31 October 2026. Built: engine features E1, E2 (via existing streams), E3, E4, E5, E7; Chapters II, III and IV.** Chapter V waits for the Lecture 6–7 slides; Chapters VI–X wait for theirs.
+Status: **agreed 31 October 2026. Built: engine features E1, E2 (via existing streams), E3, E4, E5, E7; Chapters II–V.** Chapters VI–X wait for their slides (Lecture 7 onwards).
 
 **Revision, 31 October 2026:** the game felt one-directional and spoon-fed. §7 adds fading help, real cash with consequences, a match-and-choose round and exam-style questions for Chapters I–IV. **Approved and built (F1–F4) for Chapters I–IV.**
 
@@ -363,3 +363,13 @@ Each question has its own answer and is graded by the same engine.
 - **Practice depth:** 18 new scenarios (perpetuities, growing and delayed perpetuities, PV/FV, loans, bonds, payout, two-stage, ARR, IRR, depreciation shield, salvage). Chapters V–X should ship with at least two scenarios per idea.
 - **Exam mode (built):** see the README. Chapters V–X must add their own question to the blueprint in `content/paper.ts` (weights must still total 25 a question).
 - **Not built yet:** predict-before-reveal prompts, worked-example fading in lessons, mixed cross-chapter review sets.
+
+## 9. Chapter V as built (4 November 2026, from Lecture 6, the Statistics Recap and the Ch7–8 problem set)
+
+- **Source note:** Lecture 6 covers the whole of the planned Chapter V (returns through market efficiency) and CAPM, so Chapter V is four episodes: *Where the surplus should go* (returns, risk premium, SD), *Don't put it all in silk* (covariance, portfolios, diversification), *The price of risk* (beta, CAPM), *The right mix* (market plus risk-free, efficient portfolios, market efficiency, and a match-and-choose round on the real surplus).
+- **Boss:** *The investment committee*: the Ch8 P9 CAPM numbers (rf 4%, rm 12%), P24's portfolio, the slides' 10%/15% mix, and a written answer. **Exam room:** beta from five years of data into CAPM; a risk budget in the market plus bills.
+- **No new cast.** Rupert, Idris, Céline, Theo and Aoife carry it.
+- **Not on the formula sheet:** none of the Chapter V formulas is among the seven provided. Every lesson says so.
+- **Mock paper:** now five topics; each sitting draws four.
+- **Gaps:** Ch7 P11 (variance of two stocks from monthly data) and P18 (the safest portfolio with a stock you can't sell) have no dedicated problem; P11 is the same calculation as `stock-sd` and `two-stock-cov`. Ch8 P2(b) (which action gives the safest portfolio) is covered by `portfolio-beta`'s explanation.
+- **Lecture 7 and later:** still to come. When it arrives, add the next chapter the same way.

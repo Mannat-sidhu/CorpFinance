@@ -238,12 +238,15 @@ function SpotCheck({ exclude, onDone }: { exclude: ConceptId[]; onDone: (score: 
 
 // ---------------------------------------------------------------- session
 
-export function SessionPlayer({ sessionId }: { sessionId: string }) {
-  const { save, setSave, go, back, applyOutcome, recordWork } = useGame();
+/** `testOut` plays only the questions: no story, no lessons. For ideas you already know. */
+export function SessionPlayer({ sessionId, testOut = false }: { sessionId: string; testOut?: boolean }) {
+  const { save, setSave, go, back, applyOutcome, recordWork, meet } = useGame();
   const found = findSession(sessionId)!;
   const { session, act, index } = found;
+  const parts = useMemo(() => (testOut ? session.parts.filter((p) => p.kind === 'problem' || p.kind === 'spotcheck') : session.parts), [session, testOut]);
   const replay = !!save.sessions[sessionId];
-  const resume = save.resume?.sessionId === sessionId ? save.resume : null;
+  // A half-played episode only resumes in the way it was started.
+  const resume = save.resume?.sessionId === sessionId && !!save.resume.testOut === testOut ? save.resume : null;
   const [part, setPart] = useState(resume?.part ?? 0);
   const [done, setDone] = useState<Record<number, { score: number; max: number }>>(resume?.done ?? {});
   const [weak, setWeak] = useState<ConceptId[]>(resume?.weak ?? []);
@@ -252,14 +255,19 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
   const [seed] = useState(newSeed);
   const [promos, setPromos] = useState<{ concept: ConceptId; to: Stage }[]>([]);
   const taught = useMemo(() => session.parts.flatMap((p) => (p.kind === 'lesson' ? p.concepts : [])), [session]);
-  const total = session.parts.length;
+  const total = parts.length;
   const finished = part >= total;
   const score = Object.values(done).reduce((s, d) => s + d.score, 0);
   const max = Object.values(done).reduce((s, d) => s + d.max, 0);
 
   useEffect(() => {
-    if (!finished) setSave((s) => ({ ...s, resume: { sessionId, part, score, max, startValue, weak, done } }));
-  }, [part, done, finished, sessionId, startValue, setSave, score, max, weak]);
+    if (!finished) setSave((s) => ({ ...s, resume: { sessionId, part, score, max, startValue, weak, done, testOut } }));
+  }, [part, done, finished, sessionId, startValue, setSave, score, max, weak, testOut]);
+
+  // Testing out still means the ideas have been met, so they start at New and can level up.
+  useEffect(() => {
+    if (testOut) taught.forEach((c) => meet(c));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ratio = max === 0 ? 1 : score / max;
   const prior = save.sessions[sessionId];
@@ -299,6 +307,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
       <div className="spread">
         <div className="eyebrow">
           Chapter {act.numeral} · Episode {index + 1}
+          {testOut && ' · test-out'}
           {replay && ' · replay, just for practice'}
         </div>
         {!finished && (
@@ -309,7 +318,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
       </div>
       <h1>{session.title}</h1>
       <div className="progress-dots" aria-hidden>
-        {session.parts.map((_, i) => (
+        {parts.map((_, i) => (
           <span key={i} className={i < part ? 'done' : i === part ? 'here' : ''} />
         ))}
       </div>
@@ -401,7 +410,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
     );
   }
 
-  const p = session.parts[part];
+  const p = parts[part];
   let body: JSX.Element;
   if (p.kind === 'story')
     body = <Scene key={part} beats={p.beats} scene={p.scene} startAtEnd={cameBack} onBack={backward} onDone={() => forward()} />;
@@ -414,7 +423,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
   else {
     const problem = PROBLEMS[p.problem];
     const stage = stageOf(save, problem.concept);
-    if (problem.kind === 'calc' && stage === 'common') {
+    if (!testOut && problem.kind === 'calc' && stage === 'common') {
       body = (
         <CfoCard
           key={part}
@@ -433,7 +442,7 @@ export function SessionPlayer({ sessionId }: { sessionId: string }) {
           key={part}
           problem={problem}
           params={p.params}
-          mode={helpFor(stage)}
+          mode={testOut ? (stage === 'common' ? 'unguided' : 'prompted') : helpFor(stage)}
           seed={seed + part}
           outcomeNote={!replay}
           onDone={(r: RoundResult) => {

@@ -13,6 +13,12 @@ const SYMBOLS: Record<string, string> = {
   cdots: '⋯',
   sum: '∑',
   ldots: '…',
+  sigma: 'σ',
+  rho: 'ρ',
+  beta: 'β',
+  Delta: 'Δ',
+  mu: 'μ',
+  pm: '±',
   quad: ' ',
   qquad: '  ',
   ',': ' ',
@@ -65,6 +71,26 @@ function parse(src: string, i: number, stop: string | null, key: { n: number }):
             <span className="num">{num}</span>
             <span className="den">{den}</span>
           </span>,
+        );
+      } else if (name === 'bar') {
+        flush();
+        const [inner, a] = group(i);
+        i = a;
+        out.push(
+          <span className="overbar" key={key.n++}>
+            {inner}
+          </span>,
+        );
+      } else if (name === 'sqrt') {
+        flush();
+        const [inner, a] = group(i);
+        i = a;
+        out.push(
+          <Fragment key={key.n++}>
+            √<span className="big-paren">(</span>
+            {inner}
+            <span className="big-paren">)</span>
+          </Fragment>,
         );
       } else if (name === 'text') {
         flush();

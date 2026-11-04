@@ -1,16 +1,25 @@
 // Mock exam: the blueprint, marking and finishing a paper.
 import { PROBLEMS } from '../src/content';
 import { paperText } from '../src/ui/Chat';
-import { BLUEPRINT, buildPaper } from '../src/content/paper';
+import { BLUEPRINT, QUESTIONS_PER_PAPER, buildPaper } from '../src/content/paper';
 import { expectedValues } from '../src/engine/grading';
 import { PAPER_MARKS, finishPaper, marksFor, questionTotal, stepTotals, type PartResult } from '../src/engine/paper';
 import type { CalcProblem } from '../src/engine/types';
 
 describe('the blueprint', () => {
-  it('has four questions of 25 marks', () => {
-    expect(BLUEPRINT).toHaveLength(4);
+  it('every topic is 25 marks, and a paper draws four of them for 100', () => {
+    expect(BLUEPRINT.length).toBeGreaterThanOrEqual(QUESTIONS_PER_PAPER);
     for (const q of BLUEPRINT) expect(q.parts.reduce((s, p) => s + p.weight, 0)).toBe(25);
-    expect(BLUEPRINT.length * 25).toBe(PAPER_MARKS);
+    expect(QUESTIONS_PER_PAPER * 25).toBe(PAPER_MARKS);
+    for (let seed = 1; seed <= 50; seed++) {
+      const paper = buildPaper(seed);
+      expect(paper).toHaveLength(QUESTIONS_PER_PAPER);
+      expect(new Set(paper.map((q) => q.title)).size).toBe(QUESTIONS_PER_PAPER);
+    }
+  });
+  it('different sittings cover different topics', () => {
+    const sets = new Set(Array.from({ length: 40 }, (_, i) => buildPaper(i + 1).map((q) => q.chapter).join()));
+    expect(sets.size).toBeGreaterThan(2);
   });
   it('only draws on problems that exist', () => {
     for (const q of BLUEPRINT) for (const p of q.parts) for (const id of p.from) expect(PROBLEMS[id], id).toBeDefined();
@@ -70,6 +79,7 @@ describe('marking a paper', () => {
   });
   it('parts not sat score zero, and the total is the sum of the questions', () => {
     const plan = buildPaper(7);
+    expect(plan).toHaveLength(4);
     const rec = finishPaper({ seed: 7, startedAt: 0, timed: true, parts: [part(0, 0, 10, 10, 10), part(0, 1, 8, 4, 8)] }, plan, 3_600_000);
     expect(rec.parts).toHaveLength(12);
     expect(rec.byQuestion[0]).toBe(14);

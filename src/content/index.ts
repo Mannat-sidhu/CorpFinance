@@ -10,6 +10,8 @@ import { ACT3_CONCEPTS } from './act-3-concepts';
 import { ACT3_PROBLEMS } from './act-3-problems';
 import { ACT4_CONCEPTS } from './act-4-concepts';
 import { ACT4_PROBLEMS } from './act-4-problems';
+import { ACT5_CONCEPTS } from './act-5-concepts';
+import { ACT5_PROBLEMS } from './act-5-problems';
 import { ACTS } from './acts';
 import { EXAM_PROBLEMS } from './exam-rooms';
 import { MATCH_PROBLEMS } from './matches';
@@ -19,9 +21,9 @@ import { METHODS } from './methods';
 export { ACTS } from './acts';
 export { CHARACTERS, FORMULA_SHEET, METHODS } from './methods';
 
-export const CONCEPTS: Record<ConceptId, Concept> = Object.fromEntries([...ACT1_CONCEPTS, ...ACT2_CONCEPTS, ...ACT3_CONCEPTS, ...ACT4_CONCEPTS].map((c) => [c.id, c]));
+export const CONCEPTS: Record<ConceptId, Concept> = Object.fromEntries([...ACT1_CONCEPTS, ...ACT2_CONCEPTS, ...ACT3_CONCEPTS, ...ACT4_CONCEPTS, ...ACT5_CONCEPTS].map((c) => [c.id, c]));
 
-export const PROBLEMS: Record<string, Problem> = Object.fromEntries([...ACT1_PROBLEMS, ...ACT2_PROBLEMS, ...ACT3_PROBLEMS, ...ACT4_PROBLEMS, ...EXAM_PROBLEMS, ...MATCH_PROBLEMS, ...EXTRA_PROBLEMS].map((p) => [p.id, p]));
+export const PROBLEMS: Record<string, Problem> = Object.fromEntries([...ACT1_PROBLEMS, ...ACT2_PROBLEMS, ...ACT3_PROBLEMS, ...ACT4_PROBLEMS, ...ACT5_PROBLEMS, ...EXAM_PROBLEMS, ...MATCH_PROBLEMS, ...EXTRA_PROBLEMS].map((p) => [p.id, p]));
 
 export const ALL_CONCEPT_IDS: ConceptId[] = ACTS.flatMap((a) => a.concepts);
 

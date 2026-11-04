@@ -79,7 +79,7 @@ export function ExamPaper() {
             <li>Fresh numbers every time you sit it.</li>
             <li>You can leave a part blank (zero marks) and move on. You can’t come back to it.</li>
             <li>Don’t refresh the page mid-part: a half-finished part is lost. Finished parts and the clock are kept.</li>
-            <li>It’s built from Chapters I–IV, the chapters in the game so far. The real paper will cover more.</li>
+            <li>Each paper draws four topics from the chapters in the game so far. The real paper may cover more.</li>
           </ul>
           <label className="paper-toggle">
             <input type="checkbox" checked={timed} onChange={(e) => setTimed(e.target.checked)} /> Against the clock ({PAPER_MINUTES} minutes). Untick to practise without time pressure.
@@ -357,7 +357,7 @@ function Report({ rec, previous, onMap, onNotebook, onAgain }: { rec: PaperRecor
           </div>
         ))}
         <p className="muted" style={{ fontSize: 13 }}>
-          Every slip above is also in your notebook, with a drill. Built from Chapters I–IV only.
+          Every slip above is also in your notebook, with a drill.
         </p>
 
         <div className="scene-controls">

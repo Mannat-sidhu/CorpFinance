@@ -12,7 +12,7 @@ const store: SaveStore = new LocalSaveStore(seedHoldings);
 export type Screen =
   | { name: 'welcome' }
   | { name: 'map' }
-  | { name: 'play'; sessionId: string }
+  | { name: 'play'; sessionId: string; testOut?: boolean }
   | { name: 'boss'; act: number }
   | { name: 'exam'; act: number }
   | { name: 'yearend'; act: number }

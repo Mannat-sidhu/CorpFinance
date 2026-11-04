@@ -71,6 +71,8 @@ export interface SaveData {
     score: number;
     max: number;
     startValue: number;
+    /** Playing the questions only (skipping story and lessons). */
+    testOut?: boolean;
     /** Ideas missed so far this sitting. */
     weak?: ConceptId[];
     /** Parts already finished, with their points, so going back never re-marks them. */

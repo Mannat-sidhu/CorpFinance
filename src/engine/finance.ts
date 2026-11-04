@@ -118,3 +118,60 @@ export function paybackYears(flows: number[]) {
 
 /** IRR (decimal) of a cash-flow list, by bisection between −50% and 100%. */
 export const irr = (flows: number[], lo = -0.5, hi = 1) => solveRate((r) => npv(r, flows), 0, lo, hi);
+
+// ---------------------------------------------------------------- risk and return (all in decimals unless a name says otherwise)
+
+/** Holding-period return: capital gain plus dividend yield. */
+export const holdingReturn = (p0: number, p1: number, income = 0) => (p1 - p0 + income) / p0;
+
+export const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** Variance of realised returns: the average squared distance from the mean (weight 1/n each). */
+export const variance = (xs: number[]) => {
+  const m = mean(xs);
+  return xs.reduce((s, x) => s + (x - m) ** 2, 0) / xs.length;
+};
+export const stdDev = (xs: number[]) => Math.sqrt(variance(xs));
+
+export const covariance = (xs: number[], ys: number[]) => {
+  const mx = mean(xs);
+  const my = mean(ys);
+  return xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0) / xs.length;
+};
+export const correlation = (xs: number[], ys: number[]) => covariance(xs, ys) / (stdDev(xs) * stdDev(ys));
+
+/** Expected return from probabilities: a probability-weighted average. */
+export const expectedReturn = (ps: number[], rs: number[]) => ps.reduce((s, p, i) => s + p * rs[i], 0);
+export const varianceFromProbs = (ps: number[], rs: number[]) => {
+  const e = expectedReturn(ps, rs);
+  return ps.reduce((s, p, i) => s + p * (rs[i] - e) ** 2, 0);
+};
+export const covarianceFromProbs = (ps: number[], xs: number[], ys: number[]) => {
+  const ex = expectedReturn(ps, xs);
+  const ey = expectedReturn(ps, ys);
+  return ps.reduce((s, p, i) => s + p * (xs[i] - ex) * (ys[i] - ey), 0);
+};
+
+/** Two-asset portfolio: `w` in the first asset, the rest in the second. */
+export const portfolioReturn = (w: number, r1: number, r2: number) => w * r1 + (1 - w) * r2;
+export const portfolioVariance = (w: number, s1: number, s2: number, rho: number) =>
+  w * w * s1 * s1 + (1 - w) * (1 - w) * s2 * s2 + 2 * w * (1 - w) * rho * s1 * s2;
+export const portfolioSd = (w: number, s1: number, s2: number, rho: number) => Math.sqrt(portfolioVariance(w, s1, s2, rho));
+
+/** Beta: the slope of a stock's returns on the market's, Cov(R_i, R_m) ÷ Var(R_m). */
+export const beta = (stock: number[], market: number[]) => covariance(stock, market) / variance(market);
+export const weightedAverage = (ws: number[], xs: number[]) => ws.reduce((s, w, i) => s + w * xs[i], 0);
+
+/** CAPM: the return investors require for bearing market risk. */
+export const capm = (rf: number, b: number, rm: number) => rf + b * (rm - rf);
+/** The beta a given expected return implies. */
+export const impliedBeta = (rf: number, r: number, rm: number) => (r - rf) / (rm - rf);
+
+/** Share of the pot in the market portfolio (the rest in the risk-free asset) for a target SD, or a target return. */
+export const marketWeightForSd = (target: number, sdMarket: number) => target / sdMarket;
+export const marketWeightForReturn = (target: number, rf: number, rm: number) => (target - rf) / (rm - rf);
+
+/** A portfolio is efficient if no other has at-most-equal risk and at-least-equal return (with one strictly better). */
+export function efficientFlags(points: { r: number; sd: number }[]): boolean[] {
+  return points.map((a) => !points.some((b) => b !== a && b.sd <= a.sd && b.r >= a.r && (b.sd < a.sd || b.r > a.r)));
+}

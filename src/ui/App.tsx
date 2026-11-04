@@ -219,6 +219,11 @@ function ActMap() {
                       </button>
                       <div className="node-title">{s.title}</div>
                       <div className="node-sub">{needsClinic ? 'Margaux wants a word.' : rec ? <Stars n={starsFor(rec.score, rec.max)} /> : s.blurb}</div>
+                      {unlocked && !rec && (
+                        <button type="button" className="link test-out" onClick={() => go({ name: 'play', sessionId: s.id, testOut: true })} title="Skip the story and lessons and go straight to the questions">
+                          Skip to the test
+                        </button>
+                      )}
                     </li>
                   );
                 })}
@@ -519,7 +524,7 @@ export function App() {
       <TopBar />
       <main className="page">
         {screen.name === 'map' && <ActMap />}
-        {screen.name === 'play' && <SessionPlayer key={screen.sessionId} sessionId={screen.sessionId} />}
+        {screen.name === 'play' && <SessionPlayer key={`${screen.sessionId}${screen.testOut ? '-test' : ''}`} sessionId={screen.sessionId} testOut={screen.testOut} />}
         {screen.name === 'boss' && <BossPlayer actNumber={screen.act} />}
         {screen.name === 'exam' && <ExamPlayer actNumber={screen.act} />}
         {screen.name === 'yearend' && <YearEndScreen year={screen.act} />}

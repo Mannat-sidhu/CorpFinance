@@ -1,6 +1,6 @@
 // The mock paper: a fresh set of four questions each sitting, built from the chapters that exist.
 // Each question is a multi-part question on one topic, as in the 2022 paper.
-import { mulberry32, pickOne } from '../engine/rng';
+import { mulberry32, pickOne, shuffle } from '../engine/rng';
 import type { QuestionPlan } from '../engine/paper';
 import type { CalcProblem } from '../engine/types';
 import { PROBLEMS } from './index';
@@ -49,12 +49,26 @@ export const BLUEPRINT: Blueprint[] = [
       { from: ['exam-incremental', 'incremental-irr'], weight: 8 },
     ],
   },
+  {
+    title: 'Risk, return and portfolios',
+    chapter: 5,
+    parts: [
+      { from: ['stock-sd', 'three-states', 'two-stock-cov'], weight: 7 },
+      { from: ['mix-two-stocks', 'scrooge-portfolio', 'exam-target-mix'], weight: 9 },
+      { from: ['required-return', 'exam-beta-capm', 'implied-beta'], weight: 9 },
+    ],
+  },
 ];
+
+/** A real paper has four questions. With more topics built than that, each sitting draws four. */
+export const QUESTIONS_PER_PAPER = 4;
 
 /** The same seed always gives the same paper, so a half-sat paper can be rebuilt after a reload. */
 export function buildPaper(seed: number): QuestionPlan[] {
   const rng = mulberry32(seed);
-  return BLUEPRINT.map((q) => ({
+  // Draw four topics, then sit them in chapter order.
+  const chosen = shuffle(rng, BLUEPRINT).slice(0, QUESTIONS_PER_PAPER).sort((a, b) => a.chapter - b.chapter);
+  return chosen.map((q) => ({
     title: q.title,
     chapter: q.chapter,
     parts: q.parts.map(({ from, weight }) => {

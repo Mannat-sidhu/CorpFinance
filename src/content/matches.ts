@@ -304,4 +304,75 @@ export const budgetPackages = defineMatch({
   },
 });
 
-export const MATCH_PROBLEMS = [firstBets, spareCashBonds, growthMoney, budgetPackages];
+// ---------------------------------------------------------------- Chapter V: where the surplus goes
+
+export const portfolioMixes = defineMatch({
+  kind: 'match',
+  id: 'portfolio-mixes',
+  title: 'Where the surplus goes',
+  host: 'rupert',
+  concept: 'capital-allocation',
+  uses: ['portfolio-risk', 'capm'],
+  base: { rf: 4, rm: 10, sm: 15 },
+  vary: (rng) => ({ rf: pickOne(rng, [3, 4, 5]), rm: pickOne(rng, [9, 10, 11]), sm: pickOne(rng, [14, 15, 18]) }),
+  build: ({ rf, rm, sm }, { cash }) => {
+    const amount = Math.max(20000, Math.round((cash * 0.35) / 10000) * 10000);
+    const mixE = fin.portfolioReturn(0.5, rm, rf);
+    const mixSd = 0.5 * sm;
+    const friend = { e: Math.round((rf + 0.65 * (rm - rf)) * 10) / 10, sd: Math.round(sm * 1.9) };
+    // What the same risk would earn through the market and the risk-free asset.
+    const fairE = fin.capm(rf, friend.sd / sm, rm);
+    const gap = fairE - friend.e;
+    const opts = [
+      { id: 'a', name: 'Everything in Treasury bills', mix: '100% bills', e: rf, sd: 0 },
+      { id: 'b', name: 'Half the market, half Treasury bills', mix: '50% market, 50% bills', e: mixE, sd: mixSd },
+      { id: 'c', name: 'The whole amount in the market index', mix: '100% market index', e: rm, sd: sm },
+      { id: 'd', name: 'Idris’s friend’s textile firm', mix: 'One company', e: friend.e, sd: friend.sd },
+    ];
+    const options: MatchOption[] = opts.map((o) => {
+      const spread = o.sd ? (o.sd * Math.sqrt(3)) / o.e : 0;
+      const holding: Holding = { id: 'ch5-surplus', label: `${o.name}: yearly return`, start: 1, years: 5, amount: (amount * o.e) / 100, final: amount, spread: spread || undefined };
+      return {
+        id: o.id,
+        name: o.name,
+        cost: amount,
+        cells: { mix: o.mix, er: o.id === 'b' ? 'work it out →' : pct(o.e, 1), sd: o.sd ? pct(o.sd, 1) : 'None' },
+        outcome: {
+          valueDelta: o.id === 'd' ? -fin.annuity((amount * gap) / 100, 0.08, 5) : 0,
+          cashDelta: -amount,
+          holding,
+          news: `${eur(amount)} of the surplus goes into: ${o.name.toLowerCase()}.`,
+        },
+      };
+    });
+    return {
+      prompt: [
+        { who: 'margaux', text: `${eur(amount)} of the surplus is free to invest for five years. Treasury bills pay ${pct(rf)}. The market index is expected to return ${pct(rm)}, with a standard deviation of ${pct(sm)}. We have ${eur(cash)} in the bank in all.` },
+        { who: 'idris', text: `Or my friend’s textile firm: ${pct(friend.e, 1)} a year, and a standard deviation of ${pct(friend.sd, 1)}. A real family business.` },
+        { who: 'rupert', text: 'Or a half-and-half mix of the index and bills. Your call.' },
+      ],
+      ask: 'Work out the mix’s expected return, label each option, then choose one.',
+      columns: [
+        { key: 'mix', label: 'What it is' },
+        { key: 'er', label: 'Expected return' },
+        { key: 'sd', label: 'Risk (SD)' },
+      ],
+      options,
+      compute: { label: 'Expected return', unit: 'pct', values: { b: mixE }, explain: `${pct(rm)} × 50% + ${pct(rf)} × 50% = ${pct(mixE, 2)}.`, tolerance: 0.05 },
+      labels: [
+        { id: 'safe', text: 'The safest: no risk at all', answer: 'a', why: 'Treasury bills have no standard deviation.' },
+        { id: 'reward', text: 'The highest expected return among the sound choices', answer: 'c', why: `${pct(rm)}: the most you can earn without taking on extra risk for nothing.` },
+        { id: 'half', text: 'Exactly half the market’s risk', answer: 'b', why: `A half-and-half mix has half the market’s standard deviation: ${pct(mixSd, 1)}.` },
+        { id: 'bad', text: 'Takes risk it isn’t paid for', answer: 'd', why: `At that risk, the market and bills together would earn ${pct(fairE, 1)}, not ${pct(friend.e, 1)}: about ${pct(gap, 1)} a year given away.`, bad: true },
+      ],
+      reasons: [
+        { id: 'r-safe', text: 'We may need this money, so I want it certain', label: 'safe' },
+        { id: 'r-reward', text: 'I want the highest return the market pays, and I accept the swings', label: 'reward' },
+        { id: 'r-half', text: 'I want market exposure, but only half as much risk', label: 'half' },
+      ],
+      working: [`E[R] = 0.5(${rm}) + 0.5(${rf}) = ${w2(mixE)}\\%`, `\\sigma = 0.5 \\times ${sm} = ${w2(mixSd)}\\%`, `\\text{Same risk as the firm via the market: } ${rf} + ${w2(friend.sd / sm)}(${rm} - ${rf}) = ${w2(fairE)}\\%`],
+    };
+  },
+});
+
+export const MATCH_PROBLEMS = [firstBets, spareCashBonds, growthMoney, budgetPackages, portfolioMixes];
